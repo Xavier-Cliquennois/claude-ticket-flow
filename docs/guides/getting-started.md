@@ -2,7 +2,7 @@
 
 How to install the plugins, set up a project and write a first ticket.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
 
 ## 1. Prerequisites
 
@@ -23,7 +23,8 @@ How to install the plugins, set up a project and write a first ticket.
 ```
 
 Skills are namespaced by the plugin: `/ticket-flow:setup-project`,
-`/ticket-flow:write-ticket`, `/ticket-flow:run-epic`,
+`/ticket-flow:write-ticket`, `/ticket-flow:deliver-ticket`,
+`/ticket-flow:run-epic`,
 `/ticket-flow:project-docs`, `/ticket-flow:brainstorm`. You can also just ask
 in plain words ("write a ticket for…", "run epic #12"): Claude picks the skill
 from its description.
@@ -65,7 +66,18 @@ likely touched, scores the ticket against the size gate, picks a model label,
 fills the template and creates the issue (and puts it on the board). If the
 ticket is too big it proposes an epic with smaller tickets and waves instead.
 
-## 5. Next steps
+## 5. Deliver it
+
+```
+/ticket-flow:deliver-ticket #42
+```
+
+In this session: reads the ticket and its comments, opens a worktree, builds,
+verifies, updates the docs, runs `security-reviewer`, merges on your « go »,
+ticks the « done when » boxes and closes or moves the ticket. To run several
+tickets in the background, give the list to `run-epic`.
+
+## 6. Next steps
 
 - [Running an epic](running-an-epic.md)
 - [Brainstorm what to do next](../reference/skills.md#brainstorm):

@@ -6,12 +6,12 @@
     {
       "name": "ticket-flow",
       "source": "./plugins/ticket-flow",
-      "description": "Skills setup-project, write-ticket, run-epic, project-docs, brainstorm; agent security-reviewer; doc reminder before git commit"
+      "description": "Skills setup-project, write-ticket, deliver-ticket, run-epic, project-docs, brainstorm; agent security-reviewer; doc reminder before git commit"
     },
     {
       "name": "orchestra",
       "source": "./plugins/orchestra",
-      "description": "Mod: live pane of an orchestrator session (stage, subagents, their context fill) and a status-line file"
+      "description": "Mod: live pane of an orchestrator session (stage, subagents, their context fill, shell commands with live output) and a status-line file"
     }
   ]
 }

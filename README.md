@@ -4,7 +4,8 @@ ticket-flow sets up a ticket-driven way of working in any project and gives
 Claude Code the skills to follow it:
 
 - **tickets small enough for one agent**: a size gate splits anything bigger into an epic;
-- **epics run in waves** by background agents, with a cap on how many run at once;
+- **one ticket delivered end to end** in the session: worktree, checks, docs, review, merge, boxes ticked;
+- **epics or ticket lists run in waves** by background agents, with a cap on how many run at once;
 - **a security review before every merge**, by a dedicated read-only agent;
 - **clean documentation**, updated in the same commit as the code, with Mermaid and SVG diagrams;
 - **project brainstorming** grounded in the code, the tickets and the history;
@@ -12,7 +13,7 @@ Claude Code the skills to follow it:
 
 It works with GitHub issues, GitHub Projects boards and Linear.
 
-> Up to date as of 2026-10-09 (`ticket-flow` 0.1.0, `orchestra` 0.1.0), tested with Claude Code 2.1.295.
+> Up to date as of 2026-10-09 (`ticket-flow` 0.2.0, `orchestra` 0.2.0), tested with Claude Code 2.1.295.
 
 ## Install
 
@@ -42,7 +43,10 @@ flowchart LR
   C --> W
   C --> E["run-epic"]
   W -->|"tickets sized S or M"| E
+  W -->|"one ticket, in session"| D["deliver-ticket"]
+  D --> R
   E -->|"one agent per ticket, N at most"| A["delivery agents"]
+  A -.->|"follow"| D
   A -->|"READY TO MERGE"| R["security-reviewer"]
   R -->|"OK"| M["merge, one at a time"]
   R -->|"BLOCKING"| A
@@ -53,12 +57,13 @@ flowchart LR
 |---|---|---|
 | `setup-project` | skill | Checks git, the GitHub remote, the tracker and its labels, offers to create what is missing, writes the `## Workflow` section of `CLAUDE.md`. |
 | `write-ticket` | skill | Ticket and epic templates with a "done when" checklist; model, size, type and security labels; **splits tickets too big for one agent**; puts tickets on the board. |
-| `run-epic` | skill | Orchestrates an epic: waves, capped parallel agents, security gate, serialized merges, checkboxes, board moves, revealed tickets. |
+| `deliver-ticket` | skill | Delivers one ticket end to end in the session: worktree, build, verify, docs, security review, merge, boxes, board. Also the procedure `run-epic`'s agents follow. |
+| `run-epic` | skill | Orchestrates an epic or a list of tickets in the background: waves, capped parallel agents, security gate, serialized merges, checkboxes, board moves, revealed tickets. |
 | `security-reviewer` | agent | Read-only review of a diff; verdict BLOCKING / OK WITH RESERVATIONS / OK with verified findings. |
 | `project-docs` | skill | Documentation standard (layout, naming, Mermaid, SVG) and a docs audit mode. |
 | `brainstorm` | skill | Facilitated session about the project: ground, diverge, converge, turn picks into tickets. |
 | doc reminder | hook | Before every `git commit`, reminds Claude to check the docs still describe the code. |
-| `orchestra` | mod | `/orchestra` pane: current stage, each subagent with its duration, last tool and context fill; a one-line status file for the status line. |
+| `orchestra` | mod | `/orchestra` pane: current stage, each subagent with its duration, last tool and context fill; the shell commands they run, with the live tail of background ones; a one-line status file for the status line. |
 
 ## Documentation
 

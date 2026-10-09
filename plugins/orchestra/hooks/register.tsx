@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, Stage } from '../types'
+import type { AgentRow, ShellRow, Stage } from '../types'
 
 const PANE = 'orchestra'
 const TICK_MS = 5000
@@ -9,7 +9,13 @@ const DONE = new Set(['completed', 'failed', 'killed', 'idle'])
 
 const stage = atom({ plugin: 'orchestra', key: 'stage' } as const, null)
 const agents = atom({ plugin: 'orchestra', key: 'agents' } as const, {})
+const shells = atom({ plugin: 'orchestra', key: 'shells' } as const, {})
 const tick = atom({ plugin: 'orchestra', key: 'tick' } as const, 0)
+
+// Commands kept in the pane: every running one, plus the latest ended ones.
+const KEPT_SHELLS = 12
+const TAIL_LINES = 3
+const TAIL_BYTES = 4096
 
 const pad2 = (n: number): string => String(n).padStart(2, '0')
 
@@ -32,6 +38,69 @@ const clean = (text: string): string => text.replace(CONTROL, ' ')
 
 const cut = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max - 1)}…`
+
+// A command's output: drop escape sequences, keep what a carriage return
+// left on screen (progress bars), then strip the remaining control characters.
+const ANSI = /\u001b\[[0-?]*[ -/]*[@-~]|\u001b\][^\u0007\u001b]*(\u0007|\u001b\\)?|\u001b[@-_]/g
+
+const tailLines = (text: string, count: number): string[] =>
+  text
+    .replace(ANSI, '')
+    .split('\n')
+    .map(line => clean(line.split('\r').filter(part => part.trim() !== '').pop() ?? '').trimEnd())
+    .filter(line => line.trim() !== '')
+    .slice(-count)
+
+// The background launch's answer names the file its output goes to.
+const OUTPUT_PATH = /written to: (\S+\.output)/
+
+// A background task's end reaches its loop as a <task-notification> row.
+const NOTIFICATION = /<task-id>([\w-]+)<\/task-id>[\s\S]*?<status>(\w+)<\/status>/g
+
+const endStatus = (status: string): ShellRow['status'] =>
+  status === 'completed' ? 'completed' : status === 'killed' ? 'killed' : 'failed'
+
+const keepRecent = (rows: Record<string, ShellRow>): Record<string, ShellRow> => {
+  const ended = Object.values(rows)
+    .filter(row => row.endedAt !== undefined)
+    .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
+  if (ended.length <= KEPT_SHELLS) return rows
+  const kept: Record<string, ShellRow> = { ...rows }
+  for (const row of ended.slice(KEPT_SHELLS)) delete kept[row.id]
+  return kept
+}
+
+const endShell = (
+  rows: Record<string, ShellRow>,
+  match: (row: ShellRow) => boolean,
+  status: ShellRow['status'],
+  now: number,
+): Record<string, ShellRow> => {
+  let changed = false
+  const updated: Record<string, ShellRow> = { ...rows }
+  for (const row of Object.values(rows)) {
+    if (row.endedAt === undefined && match(row)) {
+      updated[row.id] = { ...row, status, endedAt: now }
+      changed = true
+    }
+  }
+  return changed ? keepRecent(updated) : rows
+}
+
+// The last lines of a background command's output file: read whole while
+// small, through `tail` past what one read may copy.
+async function readTail($: EngineInterface, path: string): Promise<string[] | undefined> {
+  try {
+    const { size } = await $.fs.stat(path)
+    if (size <= 1024 * 1024) return tailLines(await $.fs.read(path), TAIL_LINES)
+    const { stdout } = await $.process.run(['tail', '-c', String(TAIL_BYTES), path])
+    return tailLines(stdout, TAIL_LINES)
+  } catch {
+    return undefined
+  }
+}
+
+let shellSeq = 0
 
 // Window size of the session's model, used to turn a subagent's input
 // tokens into a percentage (subagents usually run a model of the same window).
@@ -121,13 +190,42 @@ export const register: Register = on => {
       })
       if (list.length > 0) await openPane($)
 
+      // Refresh the running background commands' output, and end those that
+      // died with the subagent that started them.
+      const agentRows = await read($, agents)
+      const shellRows = Object.values(await read($, shells))
+      const tails = new Map<string, string[]>()
+      for (const row of shellRows) {
+        if (row.endedAt !== undefined || row.outputPath === undefined) continue
+        const lines = await readTail($, row.outputPath)
+        if (lines !== undefined) tails.set(row.id, lines)
+      }
+      await update($, shells, rows => {
+        let updated = rows
+        for (const [id, lines] of tails) {
+          const row = updated[id]
+          if (row !== undefined) updated = { ...updated, [id]: { ...row, tail: lines } }
+        }
+        return endShell(
+          updated,
+          row =>
+            row.endsWithOwner === true &&
+            row.agentId !== undefined &&
+            agentRows[row.agentId]?.endedAt !== undefined,
+          'killed',
+          now,
+        )
+      })
+
       // The status line (ccstatusline) shows this file: the engine's own pinned
       // status is plain text behind a warning glyph, so it is not used.
       const current = await read($, stage)
       const runningCount = list.filter(info => !DONE.has(info.status)).length
+      const shellCount = Object.values(await read($, shells)).filter(row => row.endedAt === undefined).length
       const parts: string[] = []
       if (current !== null) parts.push(`▶ ${current.text}`)
       if (runningCount > 0) parts.push(`${runningCount} agent${runningCount > 1 ? 's' : ''} actif${runningCount > 1 ? 's' : ''}`)
+      if (shellCount > 0) parts.push(`${shellCount} commande${shellCount > 1 ? 's' : ''}`)
       await writeStatusLine($, parts.join(' · '))
       await update($, tick, n => n + 1)
     })
@@ -191,6 +289,99 @@ export const register: Register = on => {
     return done
   })
 
+  // Every shell command, the main session's and each subagent's: shown while
+  // it runs, a background one with the tail of its output file.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const id = e.tool_use_id ?? `shell-${++shellSeq}`
+    const startedAt = await $.clock.now()
+    const row: ShellRow = {
+      id,
+      agentId: e.agentId,
+      description: cut(clean(e.description ?? '').trim(), 200),
+      command: cut(clean(e.command).replace(/\s+/g, ' ').trim(), 400),
+      isBackground: e.run_in_background === true,
+      startedAt,
+      status: 'running',
+      tail: [],
+    }
+    await update($, shells, rows => ({ ...rows, [id]: row }))
+    if (row.isBackground) await openPane($)
+
+    const ran = await next(e)
+    const now = await $.clock.now()
+    const result = ran.deny === undefined && ran.isError !== true ? ran.result : undefined
+    const taskId = result?.backgroundTaskId
+    if (taskId !== undefined) {
+      // Launched in the background, or moved there (ctrl+b, a timeout).
+      const outputPath = ran.text?.match(OUTPUT_PATH)?.[1]
+      await update($, shells, rows => {
+        const current = rows[id] ?? row
+        return {
+          ...rows,
+          [id]: {
+            ...current,
+            isBackground: true,
+            taskId,
+            outputPath,
+            endsWithOwner: result?.backgroundEndsWithFinalResponse === true,
+          },
+        }
+      })
+      await openPane($)
+    } else {
+      const status: ShellRow['status'] = ran.deny !== undefined || ran.isError === true ? 'failed' : 'completed'
+      await update($, shells, rows => endShell(rows, current => current.id === id, status, now))
+    }
+    return ran
+    // Tracking must never cost the command: a failure here hands on the
+    // call's own result (replayed, never run twice) or runs it untouched.
+  }).catch(($, e, next) => next(e))
+
+  on('tool.call', { tool: 'TaskStop' }, async ($, e, next) => {
+    const ran = await next(e)
+    const taskId = e.task_id ?? e.shell_id
+    if (ran.deny === undefined && ran.isError !== true && taskId !== undefined) {
+      const now = await $.clock.now()
+      await update($, shells, rows => endShell(rows, row => row.taskId === taskId, 'killed', now))
+    }
+    return ran
+  }).catch(($, e, next) => next(e))
+
+  // A background command's end: its notification row names the task and how
+  // it ended, in whichever loop (main or subagent) started it.
+  on('session.append', async ($, e, next) => {
+    const text = JSON.stringify(e.message.content)
+    if (text.includes('task-notification')) {
+      const ends = new Map<string, ShellRow['status']>()
+      for (const match of text.matchAll(NOTIFICATION)) {
+        const [, taskId, status] = match
+        if (taskId !== undefined && status !== undefined) ends.set(taskId, endStatus(status))
+      }
+      if (ends.size > 0) {
+        const now = await $.clock.now()
+        const rows = Object.values(await read($, shells)).filter(
+          row => row.taskId !== undefined && ends.has(row.taskId) && row.endedAt === undefined,
+        )
+        const tails = new Map<string, string[]>()
+        for (const row of rows) {
+          const lines = row.outputPath === undefined ? undefined : await readTail($, row.outputPath)
+          if (lines !== undefined) tails.set(row.id, lines)
+        }
+        await update($, shells, current => {
+          let updated = current
+          for (const row of rows) {
+            const kept = updated[row.id]
+            if (kept === undefined) continue
+            updated = { ...updated, [row.id]: { ...kept, tail: tails.get(row.id) ?? kept.tail } }
+            updated = endShell(updated, other => other.id === row.id, ends.get(row.taskId ?? '') ?? 'failed', now)
+          }
+          return updated
+        })
+      }
+    }
+    return next(e)
+  }).catch(($, e, next) => next(e))
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
     await read($, tick)
@@ -201,6 +392,17 @@ export const register: Register = on => {
     const ended = rows.filter(row => row.endedAt !== undefined)
     const width = Math.max(30, (e.viewport?.columns ?? 60) - 4)
     const room = Math.max(1, (e.viewport?.rows ?? 24) - 6)
+    const shellRows = Object.values(await read($, shells)).sort((a, b) => b.startedAt - a.startedAt)
+    const runningShells = shellRows.filter(row => row.endedAt === undefined)
+    const endedShells = shellRows.filter(row => row.endedAt !== undefined)
+    // Agents take half the room when commands are listed, all of it otherwise.
+    const agentRoom = shellRows.length === 0 ? room : Math.max(2, Math.floor(room / 2))
+    const shellRoom = room - Math.min(agentRoom, Math.max(1, rows.length * 2))
+    const owner = (row: ShellRow): string => {
+      if (row.agentId === undefined) return 'orchestrateur'
+      const agent = rows.find(candidate => candidate.id === row.agentId)
+      return agent === undefined ? 'sous-agent' : cut(agent.label.split(' · ')[0] ?? agent.label, 24)
+    }
 
     const line = (row: AgentRow) => {
       const elapsed = durationText((row.endedAt ?? now) - row.startedAt)
@@ -230,6 +432,50 @@ export const register: Register = on => {
       )
     }
 
+    // A running command shows its last lines, an ended one its very last.
+    const shownTail = (row: ShellRow): string[] => (row.endedAt === undefined ? row.tail : row.tail.slice(-1))
+    const shellHeight = (row: ShellRow): number => 2 + shownTail(row).length
+
+    const shellLine = (row: ShellRow) => {
+      const isDone = row.endedAt !== undefined
+      const mark = row.status === 'failed' || row.status === 'killed' ? '✗' : isDone ? '✓' : '●'
+      const header = [
+        owner(row),
+        row.description === '' ? undefined : row.description,
+        durationText((row.endedAt ?? now) - row.startedAt),
+        row.isBackground ? 'fond' : undefined,
+        isDone && row.status !== 'completed' ? row.status : undefined,
+      ]
+        .filter(part => part !== undefined)
+        .join(' · ')
+      return (
+        <Box flexDirection="column">
+          <Text dimColor={isDone} bold={!isDone}>
+            {mark} {cut(header, width - 2)}
+          </Text>
+          <Text dimColor color={isDone ? undefined : 'cyan'}>
+            {'  $ '}
+            {cut(row.command, width - 4)}
+          </Text>
+          {shownTail(row).map(tailLine => (
+            <Text dimColor>
+              {'  │ '}
+              {cut(tailLine, width - 4)}
+            </Text>
+          ))}
+        </Box>
+      )
+    }
+
+    const shownShells: ShellRow[] = []
+    let used = 1
+    for (const row of [...runningShells, ...endedShells]) {
+      const height = shellHeight(row)
+      if (used + height > shellRoom && shownShells.length > 0) break
+      shownShells.push(row)
+      used += height
+    }
+
     return (
       <Box flexDirection="column">
         <Text bold>
@@ -243,7 +489,14 @@ export const register: Register = on => {
         </Text>
         <Text> </Text>
         {rows.length === 0 && <Text dimColor>Aucun sous-agent pour l'instant.</Text>}
-        {[...running, ...ended].slice(0, Math.max(1, Math.floor(room / 2))).map(line)}
+        {[...running, ...ended].slice(0, Math.max(1, Math.floor(agentRoom / 2))).map(line)}
+        {shellRows.length > 0 && <Text> </Text>}
+        {shellRows.length > 0 && (
+          <Text bold>
+            Commandes · {runningShells.length} en cours
+          </Text>
+        )}
+        {shownShells.map(shellLine)}
       </Box>
     )
   })

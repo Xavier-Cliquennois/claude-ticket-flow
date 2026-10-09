@@ -12,5 +12,5 @@ Where to find what, one line per page.
 | [reference/skills.md](reference/skills.md) | What each skill, the agent and the hook do, and when they trigger. |
 | [reference/workflow-section.md](reference/workflow-section.md) | The `## Workflow` section of `CLAUDE.md`: every field, with examples. |
 | [reference/tickets-and-labels.md](reference/tickets-and-labels.md) | Ticket and epic templates, labels, the size gate and how tickets are split. |
-| [reference/orchestra.md](reference/orchestra.md) | The `orchestra` mod: pane, stage tool, status-line file, limits. |
+| [reference/orchestra.md](reference/orchestra.md) | The `orchestra` mod: pane, stage tool, shell commands, status-line file, limits. |
 | [faq.md](faq.md) | Common questions and troubleshooting. |

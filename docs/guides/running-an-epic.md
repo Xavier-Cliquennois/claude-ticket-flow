@@ -2,7 +2,7 @@
 
 What happens, step by step, when `run-epic` runs an epic, and what you see.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
 
 ## Start it
 
@@ -11,7 +11,10 @@ What happens, step by step, when `run-epic` runs an epic, and what you see.
 ```
 
 Name the epic: a GitHub issue (`#42`), a Linear issue (`ABC-42`), a Linear
-project, or a plain list of tickets to run together. With no name, the skill
+project, or a plain list of tickets to run together (`/ticket-flow:run-epic
+#12 #14 #17`, or one ticket to run in the background). A list runs exactly
+like an epic, minus the epic steps: no epic line to tick, card to move or epic
+to close; the closing summary is given in the terminal. With no name, the skill
 lists candidates (open parents, issues labelled `epic`, Linear projects with
 open issues) and asks; it never picks one itself. Say whether you want to give
 a "go" before launch or an autonomous run.
@@ -67,9 +70,11 @@ resume, never to recreate) and the machine's free memory.
 
 A ticket is launched when it is unblocked, its wave is reached, a slot is free
 and no running agent touches its files. Each agent runs in the background,
-named `t<N>`, on the model its label names, with a fixed prompt: read first,
+named `t<N>`, on the model its label names, follows `deliver-ticket` in agent
+mode (or the project's own delivery skill), with a fixed prompt: read first,
 scope, files owned by sibling agents, worktree, dedicated ports or locks,
-verify commands, browser protocol, docs rule, context hygiene, stop before the
+verify commands, long commands kept visible, browser protocol, docs rule,
+context hygiene, stop before the
 final merge, and the report format.
 
 | Agent reports | Orchestrator does |

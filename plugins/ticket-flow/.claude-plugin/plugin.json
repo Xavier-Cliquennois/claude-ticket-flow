@@ -1,6 +1,6 @@
 {
   "name": "ticket-flow",
-  "version": "0.1.0",
-  "description": "Ticket-driven workflow: setup-project, write-ticket (size gate), run-epic (waves, max parallel agents, security gate), project-docs (Mermaid/SVG), brainstorm, security-reviewer agent",
+  "version": "0.2.0",
+  "description": "Ticket-driven workflow: setup-project, write-ticket (size gate), deliver-ticket (one ticket end to end), run-epic (epic or ticket list: waves, max parallel agents, security gate), project-docs (Mermaid/SVG), brainstorm, security-reviewer agent",
   "author": { "name": "Xavier Cliquennois" }
 }

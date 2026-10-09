@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
 
 `setup-project` writes this section; you can also edit it by hand. Skills read
 it by meaning, not by exact wording, so it can live in your own words and
@@ -14,16 +14,16 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Field | Read by | Default without it |
 |---|---|---|
 | Tracker: GitHub issues of `owner/repo`, or Linear team / project | all | GitHub issues of the current repository |
-| Board: GitHub Project `owner #n`, and its status options mapped to *to do*, *in progress*, *to validate*, *blocked*, *done*; extra fields to fill (e.g. Phase) | write-ticket, run-epic | no board |
+| Board: GitHub Project `owner #n`, and its status options mapped to *to do*, *in progress*, *to validate*, *blocked*, *done*; extra fields to fill (e.g. Phase) | write-ticket, deliver-ticket, run-epic | no board |
 | Mandatory labels beyond the standard ones | write-ticket | standard set only |
-| Worktree and branch convention | run-epic (agent prompt) | `../<repo>-<N>`, branch from the ticket |
-| Verify commands, in order | run-epic, write-ticket ("done when") | inferred from `package.json` / `pyproject.toml` |
-| Browser check rule | run-epic | Chrome, then Playwright, else NOT DONE |
-| Review rule | run-epic | `security-reviewer`, HIGH/MEDIUM in scope block |
-| Merge flow (PR to main / PR to `dev` then release / local `--no-ff`) | run-epic | what git history suggests |
+| Worktree and branch convention | deliver-ticket, run-epic (agent prompt) | `../<repo>-<N>`, branch from the ticket |
+| Verify commands, in order | deliver-ticket, run-epic, write-ticket ("done when") | inferred from `package.json` / `pyproject.toml` |
+| Browser check rule | deliver-ticket, run-epic | Chrome, then Playwright, else NOT DONE |
+| Review rule | deliver-ticket, run-epic | `security-reviewer`, HIGH/MEDIUM in scope block |
+| Merge flow (PR to main / PR to `dev` then release / local `--no-ff`) | deliver-ticket, run-epic | what git history suggests |
 | Max parallel agents | run-epic | 3 |
-| Exclusive resources (never two at once) | run-epic | none |
-| Project delivery skill, if any | run-epic | none |
+| Exclusive resources (never two at once) | deliver-ticket, run-epic | none |
+| Project delivery skill, if any | deliver-ticket (defers to it), run-epic | `deliver-ticket` |
 | Docs location and rule | project-docs | `docs/`, same-commit rule |
 
 ## Example: GitHub issues and a Projects board

@@ -1,6 +1,6 @@
 ---
 name: run-epic
-description: Orchestrate an epic (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate every merge on the security-reviewer agent, merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic".
+description: Orchestrate an epic, or a plain list of tickets, (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate every merge on the security-reviewer agent, merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic", "lance les tickets 12, 14 et 17", "fais tourner ces tickets", "lance le ticket 42 en fond".
 ---
 
 # run-epic
@@ -13,12 +13,19 @@ Talk to the user in their language.
 
 - Project `CLAUDE.md`, section `## Workflow`: tracker, **max parallel agents** (N;
   default 3 if absent), merge flow, verify commands, what must never run twice at
-  once (bench, OCR, CI lock), the project's delivery skill if any (e.g.
-  `deliver-ticket`).
+  once (bench, OCR, CI lock), the project's delivery skill if any (without one, ticket agents follow
+  `ticket-flow:deliver-ticket`).
 - Which epic: the one the user named (`#N`, a Linear id like `ABC-N`, a Linear project, or a plain
   list of tickets to run together). None named → list candidates (open parents,
   issues labelled `epic`, Linear projects with open issues) and ask; never pick one.
   In Linear an epic is a parent issue or a project: no label needed.
+- **List mode**: the user named tickets, not an epic (« lance les tickets 12, 14
+  et 17 », or a single ticket to run in the background). Everything below
+  applies to the list as if it were the epic's children, except what belongs
+  to an epic: no epic line to tick or comment, no epic card to move, no epic to
+  close (marked *(epic only)* below). Revealed tickets are standalone. One
+  ticket to do in this session rather than in the background is
+  `deliver-ticket`, not this skill.
 - The epic and every child: body, comments, state, labels, sub-issues, blocked-by
   (`gh issue view N --json title,body,state,labels,comments` + GraphQL
   `subIssues` / `blockedBy`; or the Linear MCP).
@@ -46,7 +53,8 @@ Board (GitHub Project or Linear status): keep it true as you go, using the state
 mapping in the CLAUDE.md and the commands in `write-ticket` §6. Launched → « en
 cours »; parked or blocked → « bloqué »; merged and waiting for a human check →
 « à valider » (or « fini » if the board has no such state and every box is
-ticked); closed → « fini ». The epic card is « en cours » from launch to closing.
+ticked); closed → « fini ». *(epic only)* The epic card is « en cours » from launch to
+closing.
 
 Keep a slot table: at most N running agents, and at most one agent holding each
 exclusive resource the CLAUDE.md names.
@@ -67,8 +75,8 @@ When an agent reports:
      (`write-ticket`); then SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
-2. **FUSIONNÉ** → tick the epic's line, comment the epic with one line (ticket,
-   merge commit, what it changed), check the agent closed or moved its ticket as the
+2. **FUSIONNÉ** → *(epic only)* tick the epic's line, comment the epic with one
+   line (ticket, merge commit, what it changed); then check the agent closed or moved its ticket as the
    project requires. Launch whatever is now unblocked to refill the slot.
 3. **BLOQUÉ / NON LIVRÉ** → comment the ticket with the reason, park it, refill the
    slot with the next ticket. Re-launch a ticket at most once, with the previous
@@ -98,7 +106,8 @@ Tu livres le ticket <#N / ABC-N> : « <titre> » (épic <#E>). Tu es t<N>.
 Réponds-moi dans ma langue ; code, commentaires et commits suivent le CLAUDE.md.
 
 À lire d'abord : CLAUDE.md du projet ; le ticket en entier (corps ET commentaires) ;
-<notes de mémoire utiles> ; <skill de livraison du projet, ex. deliver-ticket> que tu suis.
+<notes de mémoire utiles>. Tu suis le skill <skill de livraison du projet, sinon
+ticket-flow:deliver-ticket> en mode agent : ce prompt prime là où il en dit plus.
 
 Périmètre : ce ticket seulement. Fichiers attendus : <liste>. Un besoin hors
 périmètre devient une ligne « ticket révélé » dans ton rapport, pas du code.
@@ -106,6 +115,10 @@ En parallèle de toi : <t<M> sur <fichiers>> ; ne touche pas à leurs fichiers.
 
 Worktree : <commande de création, ou celui qui existe déjà : reprends-le après avoir lu son état>.
 Ressources : <ports/base dédiés ; verrou machine ; limite de workers de test>.
+
+Commandes longues (> 2 min) : en tâche de fond, sortie dans le terminal (jamais
+seulement `> log`) ; un log en plus : `set -o pipefail; <cmd> 2>&1 | tee <log>` ;
+Python : PYTHONUNBUFFERED=1.
 
 Vérifier : <commandes>. Navigateur (si UI) : Chrome d'abord ; si Chrome n'est pas
 joignable ou échoue 2-3 fois, Playwright ; sinon écris « test navigateur NON FAIT »
@@ -132,6 +145,9 @@ Risques / ce que je n'ai pas pu vérifier :
 ```
 
 ## 4. Closing
+
+List mode: no epic to comment or close; give the user the same summary in the
+terminal (delivered with merge commits, parked and why, revealed tickets).
 
 When no ticket is left to launch: comment the epic with a summary (what was
 delivered with merge commits, what is parked and why, revealed tickets, the epic's

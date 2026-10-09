@@ -5,8 +5,8 @@ description: Set up or upgrade a project for the ticket-flow ticket-driven workf
 
 # setup-project
 
-Goal: after this skill, the project has everything `write-ticket`, `run-epic` and
-`deliver-ticket`-style skills need, and its `CLAUDE.md` says it in one standard
+Goal: after this skill, the project has everything `write-ticket`,
+`deliver-ticket` and `run-epic` need, and its `CLAUDE.md` says it in one standard
 section. Talk to the user in their language. Write CLAUDE.md in the language it already
 uses; for a new one, in the user's language (the templates below are in French:
 translate the headings if needed).

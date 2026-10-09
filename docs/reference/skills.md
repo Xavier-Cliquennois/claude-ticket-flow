@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -43,15 +43,44 @@ this", tickets revealed during a delivery.
    (`gh project item-add`, `item-edit`), or Linear `save_issue` with `parentId`.
 6. **Announce**: number, title, labels, and "next" or "not urgent".
 
+## deliver-ticket
+
+**Triggers**: "do ticket 42", "deliver the ticket", "work on issue #42",
+"handle ABC-12".
+
+Delivers one ticket end to end. If the project's `CLAUDE.md` names its own
+delivery skill, that one is followed instead.
+
+| Step | Does |
+|---|---|
+| 0. Frame | reads `## Workflow`, the ticket with its comments, blockers, an existing worktree to resume |
+| 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
+| 2. Start | board → in progress, worktree per convention, exclusive resources one at a time |
+| 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python) |
+| 4. Verify | verify commands, browser protocol, one proof per « done when » box |
+| 5. Docs, commit | `project-docs` same-commit rule, commit convention |
+| 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
+| 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
+| 8. Close | ticks proven boxes, comments, closes or moves to « to validate », creates revealed tickets |
+
+Two modes: **direct** (in your session, all steps) and **agent** (a `run-epic`
+ticket agent: it stops at step 6 with READY TO MERGE, the orchestrator runs the
+review and says « merge »). The report format is the one below.
+
 ## run-epic
 
 **Triggers**: "run epic #N", "launch the epic", "run the wave", "autonomous
-night on the epic".
+night on the epic", "run tickets 12, 14 and 17", "run ticket 42 in the
+background".
 
 See [Running an epic](../guides/running-an-epic.md) for the full walkthrough.
 Key behaviours:
 
 - names the epic or asks; never picks one;
+- **list mode**: a plain list of tickets (one or more) runs the same way,
+  without the epic steps (epic line, card, closing comment);
+- ticket agents follow `deliver-ticket` in agent mode (or the project's own
+  delivery skill);
 - pre-flight: size gate, model labels, waves from blockers and file overlap,
   human-only tickets parked;
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
