@@ -1,0 +1,9 @@
+{
+  "name": "orchestra",
+  "version": "0.1.0",
+  "description": "Live view of an orchestrator session: clock, current stage, and each subagent's status, duration, last tool and context fill",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Xavier Cliquennois"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "claude-ticket-flow",
+  "owner": { "name": "Xavier Cliquennois" },
+  "metadata": { "description": "Ticket-driven workflow for Claude Code: tickets sized for one agent, epics run in waves, security review before every merge, clean docs, project brainstorming, and a live view of the orchestrator." },
+  "plugins": [
+    {
+      "name": "ticket-flow",
+      "source": "./plugins/ticket-flow",
+      "description": "Skills setup-project, write-ticket, run-epic, project-docs, brainstorm; agent security-reviewer; doc reminder before git commit"
+    },
+    {
+      "name": "orchestra",
+      "source": "./plugins/orchestra",
+      "description": "Mod: live pane of an orchestrator session (stage, subagents, their context fill) and a status-line file"
+    }
+  ]
+}
