@@ -39,6 +39,15 @@ const clean = (text: string): string => text.replace(CONTROL, ' ')
 const cut = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max - 1)}…`
 
+// An agent's label is "<name> · <task>"; a bare description is its own task.
+const nameOf = (label: string): string => (label.includes(' · ') ? (label.split(' · ')[0] ?? label) : '')
+const taskOf = (label: string): string => (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label)
+
+const isFailed = (row: AgentRow): boolean => row.status === 'failed' || row.status === 'killed'
+
+const GAUGE_CELLS = 10
+const ctxColor = (pct: number): string => (pct >= 40 ? 'red' : pct >= 30 ? 'yellow' : 'green')
+
 // A command's output: drop escape sequences, keep what a carriage return
 // left on screen (progress bars), then strip the remaining control characters.
 const ANSI = /\u001b\[[0-?]*[ -/]*[@-~]|\u001b\][^\u0007\u001b]*(\u0007|\u001b\\)?|\u001b[@-_]/g
@@ -387,60 +396,41 @@ export const register: Register = on => {
     await read($, tick)
     const now = await $.clock.now()
     const current = await read($, stage)
-    const rows = Object.values(await read($, agents)).sort((a, b) => b.startedAt - a.startedAt)
-    const running = rows.filter(row => row.endedAt === undefined)
-    const ended = rows.filter(row => row.endedAt !== undefined)
-    const width = Math.max(30, (e.viewport?.columns ?? 60) - 4)
-    const room = Math.max(1, (e.viewport?.rows ?? 24) - 6)
-    const shellRows = Object.values(await read($, shells)).sort((a, b) => b.startedAt - a.startedAt)
+    const rows = Object.values(await read($, agents))
+    const running = rows.filter(row => row.endedAt === undefined).sort((a, b) => b.startedAt - a.startedAt)
+    const ended = rows
+      .filter(row => row.endedAt !== undefined)
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
+    const failedCount = ended.filter(isFailed).length
+    // Newest first; on a tie, the one recorded last.
+    const shellRows = Object.values(await read($, shells))
+      .reverse()
+      .sort((a, b) => b.startedAt - a.startedAt)
     const runningShells = shellRows.filter(row => row.endedAt === undefined)
-    const endedShells = shellRows.filter(row => row.endedAt !== undefined)
-    // Agents take half the room when commands are listed, all of it otherwise.
-    const agentRoom = shellRows.length === 0 ? room : Math.max(2, Math.floor(room / 2))
-    const shellRoom = room - Math.min(agentRoom, Math.max(1, rows.length * 2))
+    // Room inside the pane, then inside the header frame (border and padding).
+    const width = Math.max(30, (e.viewport?.columns ?? 60) - 4)
+    const inner = width - 4
+    let room = Math.max(8, (e.viewport?.rows ?? 24) - 2)
+
+    const percentOf = (row: AgentRow): number | undefined =>
+      row.contextTokens === undefined ? undefined : Math.round((100 * row.contextTokens) / windowTokens)
     const owner = (row: ShellRow): string => {
       if (row.agentId === undefined) return 'orchestrateur'
       const agent = rows.find(candidate => candidate.id === row.agentId)
-      return agent === undefined ? 'sous-agent' : cut(agent.label.split(' · ')[0] ?? agent.label, 24)
+      return agent === undefined ? 'sous-agent' : cut(nameOf(agent.label), 24)
     }
+    // Only the latest command of a loop is drawn: the one it is waiting on.
+    const latestRunning = (agentId: string | undefined): ShellRow | undefined =>
+      runningShells.find(row => row.agentId === agentId)
 
-    const line = (row: AgentRow) => {
-      const elapsed = durationText((row.endedAt ?? now) - row.startedAt)
-      const pct =
-        row.contextTokens === undefined ? undefined : Math.round((100 * row.contextTokens) / windowTokens)
-      const ctxColor = pct === undefined ? undefined : pct >= 40 ? 'red' : pct >= 30 ? 'yellow' : 'green'
+    // One command: a coloured summary line, the command line under it, and
+    // the last lines of its output (a running one) or its very last (ended).
+    const shellLines = (row: ShellRow, indent: string, withOwner: boolean) => {
       const isDone = row.endedAt !== undefined
-      const mark = row.status === 'failed' || row.status === 'killed' ? '✗' : isDone ? '✓' : '●'
-      const detail = [
-        elapsed,
-        pct === undefined ? undefined : `ctx ${pct} %`,
-        row.compactions > 0 ? `${row.compactions} compact.` : undefined,
-        isDone ? row.status : row.lastTool,
-      ]
-        .filter(part => part !== undefined)
-        .join(' · ')
-      return (
-        <Box flexDirection="column">
-          <Text dimColor={isDone} bold={!isDone}>
-            {mark} {cut(row.label, width - 2)}
-          </Text>
-          <Text dimColor={isDone} color={isDone ? undefined : ctxColor}>
-            {'  '}
-            {cut(detail, width - 2)}
-          </Text>
-        </Box>
-      )
-    }
-
-    // A running command shows its last lines, an ended one its very last.
-    const shownTail = (row: ShellRow): string[] => (row.endedAt === undefined ? row.tail : row.tail.slice(-1))
-    const shellHeight = (row: ShellRow): number => 2 + shownTail(row).length
-
-    const shellLine = (row: ShellRow) => {
-      const isDone = row.endedAt !== undefined
-      const mark = row.status === 'failed' || row.status === 'killed' ? '✗' : isDone ? '✓' : '●'
-      const header = [
-        owner(row),
+      const failed = row.status === 'failed' || row.status === 'killed'
+      const mark = failed ? '✗' : isDone ? '✓' : '⏵'
+      const summary = [
+        withOwner ? owner(row) : undefined,
         row.description === '' ? undefined : row.description,
         durationText((row.endedAt ?? now) - row.startedAt),
         row.isBackground ? 'fond' : undefined,
@@ -448,55 +438,177 @@ export const register: Register = on => {
       ]
         .filter(part => part !== undefined)
         .join(' · ')
+      const tail = isDone ? row.tail.slice(-1) : row.tail
+      const room = width - indent.length - 2
+      return [
+        <Text color={failed ? 'red' : isDone ? 'green' : 'yellow'} bold={!isDone}>
+          {indent}
+          {mark} {cut(summary, room)}
+        </Text>,
+        <Text color="cyan" dimColor={isDone}>
+          {indent}
+          {'  $ '}
+          {cut(row.command, room - 2)}
+        </Text>,
+        ...tail.map(tailLine => (
+          <Text dimColor>
+            {indent}
+            {'  │ '}
+            {cut(tailLine, room - 2)}
+          </Text>
+        )),
+      ]
+    }
+    const shellHeight = (row: ShellRow): number => 2 + (row.endedAt === undefined ? row.tail.length : Math.min(1, row.tail.length))
+
+    // A section title: bold label, dim count, a rule to the edge.
+    const section = (label: string, count: number | undefined, color: string) => {
+      const head = count === undefined ? label : `${label} · ${count}`
       return (
-        <Box flexDirection="column">
-          <Text dimColor={isDone} bold={!isDone}>
-            {mark} {cut(header, width - 2)}
+        <Box flexDirection="row" marginTop={1}>
+          <Text bold color={color}>
+            {head}{' '}
           </Text>
-          <Text dimColor color={isDone ? undefined : 'cyan'}>
-            {'  $ '}
-            {cut(row.command, width - 4)}
-          </Text>
-          {shownTail(row).map(tailLine => (
-            <Text dimColor>
-              {'  │ '}
-              {cut(tailLine, width - 4)}
-            </Text>
-          ))}
+          <Text dimColor>{'─'.repeat(Math.max(0, width - head.length - 1))}</Text>
         </Box>
       )
     }
 
-    const shownShells: ShellRow[] = []
-    let used = 1
-    for (const row of [...runningShells, ...endedShells]) {
-      const height = shellHeight(row)
-      if (used + height > shellRoom && shownShells.length > 0) break
-      shownShells.push(row)
-      used += height
+    // A context gauge: green under 30 %, yellow from 30 %, red from 40 %.
+    const gauge = (pct: number) => {
+      const filled = Math.min(GAUGE_CELLS, Math.round((pct / 100) * GAUGE_CELLS))
+      return [
+        <Text color={ctxColor(pct)}>{'█'.repeat(filled)}</Text>,
+        <Text dimColor>{'░'.repeat(GAUGE_CELLS - filled)}</Text>,
+        <Text color={ctxColor(pct)} bold>
+          {' '}
+          {pct} %
+        </Text>,
+      ]
     }
+
+    // A running agent: name and task with its duration, its context gauge and
+    // last tool, then the command it is running, if any.
+    const card = (row: AgentRow) => {
+      const elapsed = durationText(now - row.startedAt)
+      const name = nameOf(row.label)
+      const task = taskOf(row.label)
+      const pct = percentOf(row)
+      const shell = latestRunning(row.id)
+      const detail = [row.compactions > 0 ? `${row.compactions} compact.` : undefined, row.lastTool]
+        .filter(part => part !== undefined)
+        .join(' · ')
+      const taskRoom = Math.max(4, width - name.length - elapsed.length - 6)
+      return (
+        <Box flexDirection="column">
+          <Box flexDirection="row">
+            <Text color="cyan" bold>
+              ● {name}
+            </Text>
+            <Text bold>
+              {' '}
+              {cut(task, taskRoom).padEnd(taskRoom)}
+            </Text>
+            <Text color="cyan"> {elapsed}</Text>
+          </Box>
+          <Box flexDirection="row">
+            <Text dimColor>{'  ctx '}</Text>
+            {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
+            {detail !== '' && <Text dimColor> · {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}</Text>}
+          </Box>
+          {shell !== undefined && shellLines(shell, '  ', false)}
+        </Box>
+      )
+    }
+    const cardHeight = (row: AgentRow): number => {
+      const shell = latestRunning(row.id)
+      return 2 + (shell === undefined ? 0 : shellHeight(shell))
+    }
+
+    // An ended agent: one line, name, task, duration and context fill.
+    const nameWidth = Math.min(12, Math.max(0, ...ended.map(row => nameOf(row.label).length)))
+    const endedLine = (row: AgentRow) => {
+      const failed = isFailed(row)
+      const pct = percentOf(row)
+      const meta = `${durationText((row.endedAt ?? now) - row.startedAt).padStart(7)}`
+      const pctText = pct === undefined ? '' : `${pct} %`.padStart(6)
+      const status = failed ? ` ${row.status}` : ''
+      const taskRoom = Math.max(4, width - nameWidth - meta.length - 6 - status.length - 3)
+      return (
+        <Box flexDirection="row">
+          <Text color={failed ? 'red' : 'green'}>{failed ? '✗' : '✓'} </Text>
+          <Text bold={failed}>{cut(nameOf(row.label), nameWidth).padEnd(nameWidth)} </Text>
+          <Text dimColor>{cut(taskOf(row.label), taskRoom).padEnd(taskRoom)}</Text>
+          {status !== '' && <Text color="red">{status}</Text>}
+          <Text dimColor>{meta}</Text>
+          <Text color={pct !== undefined && pct >= 30 ? ctxColor(pct) : undefined} dimColor={pct === undefined || pct < 30}>
+            {pctText}
+          </Text>
+        </Box>
+      )
+    }
+
+    const counts = [
+      clockText(now),
+      `${running.length} actif${running.length > 1 ? 's' : ''}`,
+      `${ended.length - failedCount} fini${ended.length - failedCount > 1 ? 's' : ''}`,
+      failedCount > 0 ? `${failedCount} en échec` : undefined,
+    ]
+      .filter(part => part !== undefined)
+      .join(' · ')
+    const orchestratorShell = latestRunning(undefined)
+    const stageText = current === null ? undefined : `▶ ${clean(current.text)}`
+    const stageAge = current === null ? '' : ` ${durationText(now - current.at)}`
+    room -= 3 + (stageText === undefined ? 1 : Math.ceil((stageText.length + stageAge.length) / inner))
+    if (orchestratorShell !== undefined) room -= shellHeight(orchestratorShell)
+
+    // Running agents first, whole; the ended ones fill what is left.
+    const shownCards: AgentRow[] = []
+    if (running.length > 0) room -= 2
+    for (const row of running) {
+      const height = cardHeight(row)
+      if (height > room && shownCards.length > 0) break
+      shownCards.push(row)
+      room -= height
+    }
+    // With no command running anywhere, the latest one stays in view.
+    const lastShell = runningShells.length === 0 ? shellRows[0] : undefined
+    if (lastShell !== undefined) room -= 2 + shellHeight(lastShell)
+    const endedRoom = Math.max(1, room - 2)
+    const shownEnded = ended.length > endedRoom ? ended.slice(0, Math.max(1, endedRoom - 1)) : ended
 
     return (
       <Box flexDirection="column">
-        <Text bold>
-          {clockText(now)} · {running.length} agent{running.length > 1 ? 's' : ''} actif
-          {running.length > 1 ? 's' : ''}
-        </Text>
-        <Text dimColor={current === null}>
-          {current === null
-            ? 'Étape : (aucune publiée)'
-            : `Étape : ${cut(current.text, width - 8)} (${durationText(now - current.at)})`}
-        </Text>
-        <Text> </Text>
+        <Box flexDirection="column" borderStyle="round" borderColor="claude" paddingX={1}>
+          <Box flexDirection="row" justifyContent="space-between">
+            <Text bold color="claude">
+              ORCHESTRA
+            </Text>
+            <Text bold>{counts}</Text>
+          </Box>
+          {stageText === undefined ? (
+            <Text dimColor>Aucune étape publiée.</Text>
+          ) : (
+            <Box flexDirection="row">
+              <Text bold color="claude">
+                {stageText}
+              </Text>
+              <Text dimColor>{stageAge}</Text>
+            </Box>
+          )}
+          {orchestratorShell !== undefined && shellLines(orchestratorShell, '', true)}
+        </Box>
         {rows.length === 0 && <Text dimColor>Aucun sous-agent pour l'instant.</Text>}
-        {[...running, ...ended].slice(0, Math.max(1, Math.floor(agentRoom / 2))).map(line)}
-        {shellRows.length > 0 && <Text> </Text>}
-        {shellRows.length > 0 && (
-          <Text bold>
-            Commandes · {runningShells.length} en cours
-          </Text>
+        {running.length > 0 && section('EN COURS', running.length, 'cyan')}
+        {shownCards.map(card)}
+        {shownCards.length < running.length && (
+          <Text dimColor>… {running.length - shownCards.length} autre(s) en cours</Text>
         )}
-        {shownShells.map(shellLine)}
+        {lastShell !== undefined && section('DERNIÈRE COMMANDE', undefined, 'yellow')}
+        {lastShell !== undefined && shellLines(lastShell, '', true)}
+        {ended.length > 0 && section('TERMINÉS', ended.length, 'green')}
+        {shownEnded.map(endedLine)}
+        {shownEnded.length < ended.length && <Text dimColor>… {ended.length - shownEnded.length} de plus</Text>}
       </Box>
     )
   })

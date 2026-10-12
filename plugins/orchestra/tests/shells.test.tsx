@@ -7,7 +7,7 @@ test('a foreground command shows who ran it, then its end', async ($, on) => {
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ok', stderr: '', interrupted: false } }))
   await $.tool.call({ tool: 'Bash', command: 'uv run pytest -q', description: 'Run tests' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /Commandes · 0 en cours/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /DERNIÈRE COMMANDE/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /✓ orchestrateur · Run tests/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /\$ uv run pytest -q/ })).toBeDefined()
   await ui.unmount()
@@ -35,8 +35,8 @@ test('a background command shows its output tail until its notification ends it'
   await $.tool.call({ tool: 'Bash', command: 'bash verif.sh', description: 'Run verification', run_in_background: true })
 
   let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  expect(await ui.find({ type: 'Text', text: /● orchestrateur · Run verification .* fond/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Commandes · 1 en cours/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /⏵ orchestrateur · Run verification .* fond/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /DERNIÈRE COMMANDE/ })).toBeUndefined()
   await ui.unmount()
 
   await $.session.append({
@@ -52,10 +52,21 @@ test('a background command shows its output tail until its notification ends it'
   })
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /✓ orchestrateur · Run verification/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /Commandes · 0 en cours/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /DERNIÈRE COMMANDE/ })).toBeDefined()
   // The tail keeps what the carriage return left, escape sequences dropped.
   const last = await ui.find({ type: 'Text', text: /│ all done/ })
   expect(last).toBeDefined()
   expect(last?.text.includes('\u001b')).toBe(false)
+  await ui.unmount()
+})
+
+test('only the latest command is shown once none runs', async ($, on) => {
+  mock.clock(on, { now: Date.UTC(2026, 9, 9, 12, 0) })
+  on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: 'ok', stderr: '', interrupted: false } }))
+  await $.tool.call({ tool: 'Bash', command: 'git status', description: 'Show status' })
+  await $.tool.call({ tool: 'Bash', command: 'git push', description: 'Push branch' })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /Push branch/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /Show status/ })).toBeUndefined()
   await ui.unmount()
 })

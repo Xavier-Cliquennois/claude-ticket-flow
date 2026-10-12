@@ -3,7 +3,7 @@
 What the optional `orchestra` mod shows, how the orchestrator feeds it, and its
 limits.
 
-> Up to date as of 2026-10-09 (orchestra 0.2.0). Uses the Claude Code mods
+> Up to date as of 2026-10-12 (orchestra 0.3.0). Uses the Claude Code mods
 > API, which is in early access and may change between releases.
 
 ## What it shows
@@ -12,37 +12,46 @@ limits.
 published, and on demand with `/orchestra`:
 
 ```
-10:34 · 2 agents actifs
-Étape : vague 2/3 · t265 relu · t266 en cours (3 min)
+╭──────────────────────────────────────────────────────────────────╮
+│ ORCHESTRA                12:44 · 2 actifs · 8 finis · 1 en échec │
+│ ▶ vague 2/3 · t486 fusionné · t487 t488 en cours 3 min           │
+│ ⏵ orchestrateur · Wait for CI on PR #436 · 6 min · fond          │
+│   $ gh pr checks 436 --watch                                     │
+│   │ e2e     pending                                              │
+╰──────────────────────────────────────────────────────────────────╯
 
-● t266 · #266 export timeout
-  12 min · ctx 34 % · Edit
-● t267 · #267 retry button
-  4 min · ctx 18 % · Bash
-✓ t265 · #265 rename columns
-  21 min · ctx 41 % · 1 compact. · completed
+EN COURS · 2 ───────────────────────────────────────────────────────
+● t488 XAV-488 bouton relancer le paiement                   4 min
+  ctx ██░░░░░░░░ 18 % · Bash
+  ⏵ Type-check the app · 18 s
+    $ npx tsc --noEmit -p .
+● t487 XAV-487 export CSV des commandes                     12 min
+  ctx ███░░░░░░░ 34 % · Edit
+  ⏵ Run export tests · 1 min · fond
+    $ npm run test -- src/export/orders.test.ts
+    │ ✓ escapes quotes in names (4 ms)
+    │ ● streams 10 000 rows…
 
-Commandes · 2 en cours
-● orchestrateur · Run verification on the fake teaser · 14 min · fond
-  $ bash verif_v24.sh
-  │ [fake] step 3/7 web search
-  │ [fake] 12 queries logged
-  │ [fake] step 4/7 scoring
-● t266 · Run tests · 8 s
-  $ uv run pytest -q tests/test_export.py
-✓ t265 · Push branch · 2 s
-  $ git push -u origin t265
+TERMINÉS · 9 ───────────────────────────────────────────────────────
+✓ sec-486 Security review PR #433                        1 min   5 %
+✗ t484    XAV-484 webhook Stripe                 failed 41 min  44 %
+✓ t486    XAV-486 volume uploads VPS                    27 min  19 %
+… 6 de plus
 ```
 
-Per agent: name and task, status mark (● running, ✓ done, ✗ failed or
-killed), duration, **context fill** (green under 30 %, yellow from 30 %, red
-from 40 %), last tool while running, number of compactions.
-
-Per shell command (the main session's and every subagent's): who ran it
-(`orchestrateur` or the agent's name), its description, duration, the command
-line, and `fond` for a background one. A **background command** also shows the
-last 3 lines of its output, refreshed every 5 seconds; once ended, its last
-line stays. Running commands come first, then the 12 latest ended ones.
+- **Header frame**: clock, running / ended / failed counts, the current stage
+  and how long ago it was published, and the orchestrator's own running
+  command, if any.
+- **EN COURS**: one card per running agent: name, task and duration; a
+  **context gauge** (green under 30 %, yellow from 30 %, red from 40 %),
+  compactions and last tool; then **only the command it is running now**. A
+  background command also shows the last 3 lines of its output, refreshed
+  every 5 seconds.
+- **DERNIÈRE COMMANDE**: shown only when no command runs anywhere: the latest
+  one, with who ran it and its last output line.
+- **TERMINÉS**: one aligned line per ended agent, newest first: ✓ or ✗, name,
+  task, duration, context fill (coloured from 30 %); `failed` or `killed`
+  spelled out. What does not fit ends in `… N de plus`.
 
 **A status-line file**: `~/.claude/state/orchestra/<session id>.txt` holds one
 line (`▶ <stage> · N agents actifs`), empty when idle. Point your status line at
@@ -126,3 +135,8 @@ on stdin and print the file.
 claude plugin validate plugins/orchestra
 cd plugins/orchestra && claude plugin test .
 ```
+
+`plugins/orchestra/preview/index.html` is a simulated pane: open it in a
+browser, pick a scenario and a terminal size. It ports the `ui.render` hook to
+plain JavaScript over example data; change both together when the layout
+changes.

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestra Pane Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: a control strip above a simulated terminal pane, drawn cell by cell. */
+:root {
+  color-scheme: dark;
+  --bg: #15171b;
+  --panel: #1e2025;
+  --line: #2f333a;
+  --fg: #d8dbe0;
+  --dim: #7d838d;
+  --claude: #d97757;
+  --cyan: #56c2d6;
+  --yellow: #e5c07b;
+  --green: #8cc265;
+  --red: #e06c75;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --ui: "IBM Plex Sans", system-ui, sans-serif;
+}
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--ui); padding: 24px 16px; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-size: 20px; margin: 0; font-weight: 600; }
+h1 span { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+.controls { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; }
+.controls label { display: grid; gap: 6px; font-size: 12px; color: var(--dim); letter-spacing: .04em; text-transform: uppercase; }
+select, input[type=range] { accent-color: var(--claude); }
+select { background: var(--panel); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font: 14px var(--ui); }
+select:focus-visible, input:focus-visible { outline: 2px solid var(--claude); outline-offset: 2px; }
+output { font-family: var(--mono); color: var(--fg); font-size: 13px; text-transform: none; }
+.term-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+pre#term { margin: 0; padding: 14px 16px; font: 13px/1.45 var(--mono); white-space: pre; color: var(--fg); }
+.b { font-weight: 700; }
+.d { color: var(--dim); }
+.c-claude { color: var(--claude); } .c-cyan { color: var(--cyan); } .c-yellow { color: var(--yellow); }
+.c-green { color: var(--green); } .c-red { color: var(--red); }
+.c-cyan.d, .c-green.d { opacity: .6; color: inherit; }
+.note { font-size: 13px; color: var(--dim); max-width: 70ch; line-height: 1.5; margin: 0; }
+</style>
+</head>
+<body>
+
+<main>
+  <h1>Orchestra <span>aperçu du panneau, rendu simulé</span></h1>
+  <div class="controls">
+    <label for="scenario">Scénario
+      <select id="scenario">
+        <option value="wave">Vague en cours (3 agents)</option>
+        <option value="capture">Ta capture (tout fini)</option>
+        <option value="empty">Démarrage (rien encore)</option>
+      </select>
+    </label>
+    <label for="cols">Colonnes <output id="colsOut"></output>
+      <input id="cols" type="range" min="40" max="140" value="72">
+    </label>
+    <label for="rows">Lignes <output id="rowsOut"></output>
+      <input id="rows" type="range" min="16" max="70" value="48">
+    </label>
+  </div>
+  <div class="term-wrap"><pre id="term" aria-label="Rendu simulé du panneau"></pre></div>
+  <p class="note">Même logique que <code>hooks/register.tsx</code> : agents en cours en cartes avec jauge de contexte et seule leur commande en cours, agents finis sur une ligne, dernière commande affichée seulement quand plus rien ne tourne. Les données sont des exemples. Ouvrir ce fichier dans un navigateur, aucun serveur nécessaire.</p>
+</main>
+
+<script>
+const MIN = 60000
+const NOW = Date.UTC(2026, 9, 12, 12, 44)
+const GAUGE = 10
+const WINDOW = 200000
+
+const ago = m => NOW - m * MIN
+const endedAgent = (label, dur, pct, status = 'idle', endedMin = 0) =>
+  ({ label, startedAt: ago(endedMin + dur), endedAt: ago(endedMin), status, contextTokens: pct * WINDOW / 100, compactions: 0 })
+
+const CAPTURE = [
+  ['sec-486 · Security review PR #433', 1, 5], ['t486 · XAV-486 volume uploads VPS', 27, 19],
+  ['sec-478 · Security review XAV-478', 1, 6], ['sec-485 · Security review XAV-485', .25, 3],
+  ['t485 · XAV-485 prisma:error au build', 12, 8], ['t478 · XAV-478 médias du kit', 70, 25],
+  ['sec-480 · Security review XAV-480', .33, 3], ['sec-477 · Security review XAV-477', .33, 4],
+  ['t480 · XAV-480 visuels fixes', 22, 10], ['sec-479 · Security review XAV-479', .5, 5],
+  ['t477 · XAV-477 écran kit de publication', 27, 19], ['sec-476 · Security review XAV-476', .66, 5],
+  ['t479 · XAV-479 vidéos animate', 29, 24], ['sec-481 · Security review XAV-481', .4, 4],
+  ['t476 · XAV-476 kit réseaux modèle MCP', 27, 20], ['sec-475 · Security review XAV-475', .8, 5],
+  ['t481 · XAV-481 finitions blog public', 22, 13], ['sec-473 · Security review XAV-473', .33, 4],
+  ['t475 · XAV-475 outils MCP blog', 30, 15], ['t473 · XAV-473 sitemap robots RSS', 26, 10],
+  ['sec-474 · Security review XAV-474', .66, 4], ['sec-472 · Security review XAV-472', 1, 6],
+  ['t474 · XAV-474 admin du blog', 20, 17], ['sec-471 · Security review XAV-471', .6, 5],
+  ['t472 · XAV-472 OAuth 2.1 MCP', 57, 29], ['t471 · XAV-471 pages publiques blog', 27, 15],
+  ['sec-470 · Security review XAV-470', 1, 5], ['sec-469 · Security review XAV-469', .75, 4],
+  ['t469 · XAV-469 ADMIN_EMAILS', 19, 10], ['t470 · XAV-470 modèle Prisma blog', 37, 16],
+].map(([l, d, p], i) => endedAgent(l, d, p, 'idle', 2 + i * 6))
+
+const SCENARIOS = {
+  capture: () => ({
+    stage: { text: 't486 · FUSIONNÉ dans dev (bf307ff8) · XAV-486 en Testing', at: ago(13) },
+    agents: CAPTURE,
+    shells: [{ agentId: undefined, description: 'Merge t486 into dev', command: 'git merge --no-ff t486', isBackground: false, startedAt: ago(14), endedAt: ago(14), status: 'completed', tail: [] }],
+  }),
+  wave: () => {
+    const run = [
+      { id: 'a1', label: 't487 · XAV-487 export CSV des commandes', startedAt: ago(12), status: 'running', lastTool: 'Edit', contextTokens: 68000, compactions: 0 },
+      { id: 'a2', label: 't488 · XAV-488 bouton relancer le paiement', startedAt: ago(4), status: 'running', lastTool: 'Bash', contextTokens: 36000, compactions: 0 },
+      { id: 'a3', label: 'sec-489 · Security review XAV-489', startedAt: ago(0.7), status: 'running', lastTool: 'Grep', contextTokens: 9000, compactions: 0 },
+    ]
+    const failed = endedAgent('t484 · XAV-484 webhook Stripe', 41, 44, 'failed', 3)
+    failed.compactions = 1
+    return {
+      stage: { text: 'vague 2/3 · t486 fusionné · t487 t488 en cours · sec-489 relit', at: ago(3) },
+      agents: [...run, failed, ...CAPTURE.slice(0, 8)],
+      shells: [
+        { agentId: 'a1', description: 'Run export tests', command: 'npm run test -- src/export/orders.test.ts', isBackground: true, startedAt: ago(1.5), status: 'running',
+          tail: ['✓ exports header row (12 ms)', '✓ escapes quotes in names (4 ms)', '● streams 10 000 rows…'] },
+        { agentId: 'a2', description: 'Type-check the app', command: 'npx tsc --noEmit -p .', isBackground: false, startedAt: ago(0.3), status: 'running', tail: [] },
+        { agentId: undefined, description: 'Wait for CI on PR #436', command: 'gh pr checks 436 --watch', isBackground: true, startedAt: ago(6), status: 'running',
+          tail: ['build   pass  1m12s', 'lint    pass  34s', 'e2e     pending'] },
+      ],
+    }
+  },
+  empty: () => ({ stage: null, agents: [], shells: [] }),
+}
+
+// --- port of the pane render: keep in step with the ui.render hook of hooks/register.tsx 
+const pad2 = n => String(n).padStart(2, '0')
+const clockText = ms => { const d = new Date(ms); return `${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}` }
+const durationText = ms => { const m = Math.floor(ms / MIN); if (m < 1) return `${Math.floor(ms / 1000)} s`; if (m < 60) return `${m} min`; return `${Math.floor(m / 60)} h ${pad2(m % 60)}` }
+const cut = (t, n) => t.length <= n ? t : `${t.slice(0, Math.max(0, n - 1))}…`
+const nameOf = l => l.includes(' · ') ? l.split(' · ')[0] : ''
+const taskOf = l => l.includes(' · ') ? l.slice(l.indexOf(' · ') + 3) : l
+const isFailed = r => r.status === 'failed' || r.status === 'killed'
+const ctxColor = p => p >= 40 ? 'red' : p >= 30 ? 'yellow' : 'green'
+const seg = (t, o = {}) => ({ t, ...o })
+
+function render(data, columns, viewRows) {
+  const now = NOW
+  const rows = data.agents
+  const running = rows.filter(r => r.endedAt === undefined).sort((a, b) => b.startedAt - a.startedAt)
+  const ended = rows.filter(r => r.endedAt !== undefined).sort((a, b) => b.endedAt - a.endedAt)
+  const failedCount = ended.filter(isFailed).length
+  const shellRows = [...data.shells].reverse().sort((a, b) => b.startedAt - a.startedAt)
+  const runningShells = shellRows.filter(r => r.endedAt === undefined)
+  const width = Math.max(30, columns - 4)
+  const inner = width - 4
+  let room = Math.max(8, viewRows - 2)
+  const pctOf = r => r.contextTokens === undefined ? undefined : Math.round(100 * r.contextTokens / WINDOW)
+  const owner = s => s.agentId === undefined ? 'orchestrateur' : cut(nameOf((rows.find(r => r.id === s.agentId) || { label: 'sous-agent' }).label), 24)
+  const latestRunning = id => runningShells.find(s => s.agentId === id)
+  const out = []
+
+  const shellLines = (s, indent, withOwner, w = width) => {
+    const done = s.endedAt !== undefined
+    const failed = s.status === 'failed' || s.status === 'killed'
+    const summary = [withOwner ? owner(s) : undefined, s.description || undefined, durationText((s.endedAt ?? now) - s.startedAt),
+      s.isBackground ? 'fond' : undefined, done && s.status !== 'completed' ? s.status : undefined].filter(Boolean).join(' · ')
+    const tail = done ? s.tail.slice(-1) : s.tail
+    const r = w - indent.length - 2
+    return [
+      [seg(`${indent}${failed ? '✗' : done ? '✓' : '⏵'} ${cut(summary, r)}`, { c: failed ? 'red' : done ? 'green' : 'yellow', b: !done })],
+      [seg(`${indent}  $ ${cut(s.command, r - 2)}`, { c: 'cyan', d: done })],
+      ...tail.map(l => [seg(`${indent}  │ ${cut(l, r - 2)}`, { d: true })]),
+    ]
+  }
+  const shellHeight = s => 2 + (s.endedAt === undefined ? s.tail.length : Math.min(1, s.tail.length))
+  const section = (label, count, c) => {
+    const head = count === undefined ? label : `${label} · ${count}`
+    out.push([])
+    out.push([seg(head + ' ', { b: true, c }), seg('─'.repeat(Math.max(0, width - head.length - 1)), { d: true })])
+  }
+  const gauge = p => { const f = Math.min(GAUGE, Math.round(p / 100 * GAUGE)); return [seg('█'.repeat(f), { c: ctxColor(p) }), seg('░'.repeat(GAUGE - f), { d: true }), seg(` ${p} %`, { c: ctxColor(p), b: true })] }
+  const card = r => {
+    const el = durationText(now - r.startedAt), name = nameOf(r.label), task = taskOf(r.label), p = pctOf(r), sh = latestRunning(r.id)
+    const detail = [r.compactions > 0 ? `${r.compactions} compact.` : undefined, r.lastTool].filter(Boolean).join(' · ')
+    const tr = Math.max(4, width - name.length - el.length - 6)
+    out.push([seg(`● ${name}`, { c: 'cyan', b: true }), seg(' ' + cut(task, tr).padEnd(tr), { b: true }), seg(' ' + el, { c: 'cyan' })])
+    out.push([seg('  ctx ', { d: true }), ...(p === undefined ? [seg('—', { d: true })] : gauge(p)), ...(detail ? [seg(' · ' + cut(detail, Math.max(4, width - GAUGE - 16)), { d: true })] : [])])
+    if (sh) out.push(...shellLines(sh, '  ', false))
+  }
+  const cardHeight = r => 2 + (latestRunning(r.id) ? shellHeight(latestRunning(r.id)) : 0)
+  const nameW = Math.min(12, Math.max(0, ...ended.map(r => nameOf(r.label).length)))
+  const endedLine = r => {
+    const failed = isFailed(r), p = pctOf(r)
+    const meta = durationText(r.endedAt - r.startedAt).padStart(7)
+    const pctText = p === undefined ? '' : `${p} %`.padStart(6)
+    const status = failed ? ` ${r.status}` : ''
+    const tr = Math.max(4, width - nameW - meta.length - 6 - status.length - 3)
+    out.push([seg(failed ? '✗ ' : '✓ ', { c: failed ? 'red' : 'green' }), seg(cut(nameOf(r.label), nameW).padEnd(nameW) + ' ', { b: failed }),
+      seg(cut(taskOf(r.label), tr).padEnd(tr), { d: true }), ...(status ? [seg(status, { c: 'red' })] : []), seg(meta, { d: true }),
+      seg(pctText, p !== undefined && p >= 30 ? { c: ctxColor(p) } : { d: true })])
+  }
+
+  const counts = [clockText(now), `${running.length} actif${running.length > 1 ? 's' : ''}`,
+    `${ended.length - failedCount} fini${ended.length - failedCount > 1 ? 's' : ''}`, failedCount > 0 ? `${failedCount} en échec` : undefined].filter(Boolean).join(' · ')
+  const orch = latestRunning(undefined)
+  const stageText = data.stage ? `▶ ${data.stage.text}` : undefined
+  const stageAge = data.stage ? ` ${durationText(now - data.stage.at)}` : ''
+  room -= 3 + (stageText === undefined ? 1 : Math.ceil((stageText.length + stageAge.length) / inner))
+  if (orch) room -= shellHeight(orch)
+
+  // Header frame (round border, claude colour, paddingX 1).
+  const frame = []
+  frame.push([seg('ORCHESTRA', { b: true, c: 'claude' }), seg(' '.repeat(Math.max(1, inner - 9 - counts.length))), seg(counts, { b: true })])
+  if (stageText === undefined) frame.push([seg('Aucune étape publiée.', { d: true })])
+  else {
+    const full = stageText + stageAge
+    for (let i = 0; i < full.length; i += inner) {
+      const piece = full.slice(i, i + inner), split = stageText.length - i
+      frame.push(split >= piece.length ? [seg(piece, { b: true, c: 'claude' })]
+        : split <= 0 ? [seg(piece, { d: true })]
+        : [seg(piece.slice(0, split), { b: true, c: 'claude' }), seg(piece.slice(split), { d: true })])
+    }
+  }
+  if (orch) frame.push(...shellLines(orch, '', true, inner))
+  const bc = { c: 'claude' }
+  out.push([seg('╭' + '─'.repeat(inner + 2) + '╮', bc)])
+  for (const l of frame) {
+    const len = l.reduce((n, s) => n + s.t.length, 0)
+    out.push([seg('│ ', bc), ...l, seg(' '.repeat(Math.max(0, inner - len)) + ' │', bc)])
+  }
+  out.push([seg('╰' + '─'.repeat(inner + 2) + '╯', bc)])
+
+  const shownCards = []
+  if (running.length > 0) room -= 2
+  for (const r of running) { const h = cardHeight(r); if (h > room && shownCards.length > 0) break; shownCards.push(r); room -= h }
+  const lastShell = runningShells.length === 0 ? shellRows[0] : undefined
+  if (lastShell) room -= 2 + shellHeight(lastShell)
+  const endedRoom = Math.max(1, room - 2)
+  const shownEnded = ended.length > endedRoom ? ended.slice(0, Math.max(1, endedRoom - 1)) : ended
+
+  if (rows.length === 0) out.push([seg("Aucun sous-agent pour l'instant.", { d: true })])
+  if (running.length > 0) section('EN COURS', running.length, 'cyan')
+  shownCards.forEach(card)
+  if (shownCards.length < running.length) out.push([seg(`… ${running.length - shownCards.length} autre(s) en cours`, { d: true })])
+  if (lastShell) { section('DERNIÈRE COMMANDE', undefined, 'yellow'); out.push(...shellLines(lastShell, '', true)) }
+  if (ended.length > 0) section('TERMINÉS', ended.length, 'green')
+  shownEnded.forEach(endedLine)
+  if (shownEnded.length < ended.length) out.push([seg(`… ${ended.length - shownEnded.length} de plus`, { d: true })])
+  return out.slice(0, viewRows)
+}
+
+// --- paint -------------------
+const esc = t => t.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]))
+const $ = id => document.getElementById(id)
+function paint() {
+  const cols = +$('cols').value, rows = +$('rows').value
+  $('colsOut').textContent = cols; $('rowsOut').textContent = rows
+  const lines = render(SCENARIOS[$('scenario').value](), cols, rows)
+  $('term').innerHTML = lines.map(l => l.map(s => {
+    const cls = [s.b && 'b', s.d && 'd', s.c && `c-${s.c}`].filter(Boolean).join(' ')
+    return cls ? `<span class="${cls}">${esc(s.t)}</span>` : esc(s.t)
+  }).join('')).join('\n')
+}
+for (const id of ['scenario', 'cols', 'rows']) $(id).addEventListener('input', paint)
+paint()
+</script>
+</body>
+</html>

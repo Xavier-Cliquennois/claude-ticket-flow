@@ -16,7 +16,7 @@ test('the stage tool strips control characters', async ($, on) => {
   mock.clock(on, { now: Date.UTC(2026, 9, 9, 12, 0) })
   await $.tool.call({ tool: 'mcp__orchestra__stage', text: 'a\u001b]0;pwned\u0007b\u009bc' })
   const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
-  const shown = await ui.find({ type: 'Text', text: /Étape :/ })
+  const shown = await ui.find({ type: 'Text', text: /▶ a/ })
   expect(shown?.text.includes('\u001b')).toBe(false)
   expect(shown?.text.includes('\u009b')).toBe(false)
   await ui.unmount()
