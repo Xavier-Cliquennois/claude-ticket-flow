@@ -1,6 +1,6 @@
 {
   "name": "orchestra",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Live view of an orchestrator session: clock, current stage, and each subagent's status, duration, last tool and context fill, and the shell commands they run with the live tail of background ones",
   "types": "./types/index.d.ts",
   "author": {
