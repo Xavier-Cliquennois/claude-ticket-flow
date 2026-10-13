@@ -105,10 +105,6 @@ uploads, secrets or payments, add the `sécurité` label and a box
 ## Pourquoi cet épic
 Le problème et le chiffre (ou le résultat utilisateur) qui dira qu'il est atteint.
 
-## Sous-tickets
-| # | Titre | Modèle | Taille | Fichiers principaux |
-|---|---|---|---|---|
-
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
@@ -123,9 +119,11 @@ flowchart LR
   ta["#a"] --> tc["#c"]
   tb["#b"]
   classDef enCours fill:#fde68a,stroke:#b45309,color:#000
+  classDef aTester fill:#bfdbfe,stroke:#1d4ed8,color:#000
   classDef fini fill:#bbf7d0,stroke:#15803d,color:#000
   classDef bloque fill:#fecaca,stroke:#b91c1c,color:#000
 ```
+Légende : 🟡 en cours · 🧪 livré, reste une vérification à la main · ✅ fini · ⛔ bloqué
 
 ## Hors de l'épic, exprès
 ## Fini quand
@@ -135,12 +133,22 @@ flowchart LR
 Waves come from blocked-by links AND file overlap (compare the "Fichiers
 probablement touchés" lists). Keep a wave within the project's max parallel agents.
 
+No list of the children in the body: they are sub-issues, and GitHub (or
+Linear) already shows them under the epic. A table of them would only drift.
+
 The "Vagues" section always has both the table and the Mermaid graph:
 - Table: one row per wave; "Attend" lists the tickets the wave waits for;
   "Statut" is empty at creation.
 - Graph: one node per child, id `t<N>`, label `"#<N>"`, an arrow per blocked-by
-  link (blocker → blocked). Keep the three `classDef` lines even if unused:
+  link (blocker → blocked). Keep the four `classDef` lines and the legend even if unused:
   `run-epic` colours the nodes with them as the epic runs (see run-epic §2).
+
+A **follow-up ticket** carries what a merged ticket left undone (code or tests
+not written): title « <titre d'origine> : reste <quoi> », « Contexte » says
+« suite de #N : livré <…>, reste <…> », its « Fini quand » holds the boxes moved
+from #N, it is blocked by nothing that is closed. It is a sub-issue of the same
+epic. A box that only needs a human check never makes a follow-up ticket: the
+ticket stays open in « à valider ».
 
 ## 6. Create it
 

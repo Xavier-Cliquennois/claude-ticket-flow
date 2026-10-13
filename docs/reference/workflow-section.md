@@ -3,9 +3,14 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
+> Up to date as of 2026-10-13 (ticket-flow 0.4.0).
 
-`setup-project` writes this section; you can also edit it by hand. Skills read
+`setup-project` writes this section; you can also edit it by hand. Its first
+line under the heading is a template marker, `<!-- ticket-flow workflow: 2 -->`:
+the update band offers to run `setup-project` when a project's marker is
+missing or lower than the plugin's (see
+[skills.md](skills.md#update-band)). The number only moves when the template
+changes in a way existing projects should pick up. Skills read
 it by meaning, not by exact wording, so it can live in your own words and
 language. Fields that do not apply are left out, never left as placeholders.
 
@@ -50,7 +55,10 @@ language. Fields that do not apply are left out, never left as placeholders.
   out-of-scope findings become `sécurité` tickets.
 - Merge: PR to `main`, merge commit, after green CI.
 - Closing: tick "done when" boxes as you go, comment what was checked, close
-  only when every box is ticked, open revealed tickets.
+  it yourself when every box is ticked (`Closes #N` does nothing when the merge
+  does not target the default branch); only a human check left → to validate;
+  code left → a follow-up ticket, never a ticket left open; open revealed
+  tickets.
 
 ### Epics
 - Run with `run-epic`, in waves, **2 agents in parallel at most** (CI runs on

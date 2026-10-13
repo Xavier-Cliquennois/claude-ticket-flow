@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-13 (ticket-flow 0.3.0).
+> Up to date as of 2026-10-13 (ticket-flow 0.4.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -61,7 +61,7 @@ delivery skill, that one is followed instead.
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
 | 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
-| 8. Close | ticks proven boxes, comments, closes or moves to « to validate », creates revealed tickets |
+| 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); human check left → « to validate »; code left → follow-up ticket; creates revealed tickets |
 
 Two modes: **direct** (in your session, all steps) and **agent** (a `run-epic`
 ticket agent: it stops at step 6 with READY TO MERGE, the orchestrator runs the
@@ -88,7 +88,9 @@ Key behaviours:
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each
-  ticket's status (🟡 in progress, ✅ merged, ⛔ parked or blocked);
+  ticket's status (🟡 in progress, 🧪 merged and waiting for a human check,
+  ✅ closed, ⛔ parked or blocked); follow-up and revealed tickets join them
+  live;
 - epic closed only on its own checklist;
 - publishes its stage to `orchestra` when the mod is installed.
 
@@ -159,6 +161,27 @@ CONFIRMED or PLAUSIBLE. Severity: HIGH (exploitable by an ordinary user),
 MEDIUM (conditional, or a mandatory project rule broken on a sensitive path),
 LOW (hardening). Verdict: BLOCKING (HIGH or MEDIUM in scope), OK WITH
 RESERVATIONS, OK. Out-of-scope findings become tickets.
+
+## Update band
+
+A hooks module (`plugins/ticket-flow/hooks/update-band.tsx`) that draws a row above the prompt, in the terminal
+and in the desktop app:
+
+- **New version**: at session start, then every 6 hours, it reads the
+  published `plugin.json` on `main` (raw GitHub, or `gh api` for a private
+  repository). When it is newer than the installed one: « ⬆ ticket-flow X
+  disponible [ Mettre à jour ] ». The button runs `claude plugin marketplace
+  update`, `claude plugin update`, then `/reload-plugins` in the open session;
+  a toast confirms the new version. On failure the row shows the error and
+  the commands to type by hand. Offline: nothing is shown.
+- **Old Workflow section**: when the project's `CLAUDE.md` has a `## Workflow`
+  section without `<!-- ticket-flow workflow: N -->` at the current number, a
+  second row offers [ Remettre à niveau ], which runs `setup-project`. It is
+  re-read after each turn, so it goes away once the section is upgraded.
+- **Surfaces without the band** (VS Code, mobile): Claude is told once per
+  session, in context, to give the update commands.
+
+Tests: `plugins/ticket-flow/tests/update-band.test.tsx` (terminal and desktop).
 
 ## Doc reminder hook
 

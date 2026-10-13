@@ -22,6 +22,8 @@ agent, hook) and `plugins/orchestra` (mod). User docs live in `docs/`.
 ```
 claude plugin validate plugins/orchestra
 cd plugins/orchestra && claude plugin test .
+claude plugin validate plugins/ticket-flow
+cd plugins/ticket-flow && claude plugin test .
 ```
 
 `plugins/orchestra/preview/index.html` simulates the orchestra pane; change it

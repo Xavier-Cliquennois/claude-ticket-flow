@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-10-13 (ticket-flow 0.3.0).
+> Up to date as of 2026-10-13 (ticket-flow 0.4.0).
 
 ## The size gate
 
@@ -86,10 +86,12 @@ never "Improve X".
 | Heading | Meaning |
 |---|---|
 | `## Pourquoi cet épic` | The problem and the number or user outcome that will say it is reached |
-| `## Sous-tickets` | Table: number, title, model, size, main files |
-| `## Vagues` | Table (wave, tickets with model, waits for, why, status), critical path, and a Mermaid graph of the blocked-by links; same files never in one wave. `run-epic` fills the status as it runs |
+| `## Vagues` | Table (wave, tickets with model, waits for, why, status), critical path, a Mermaid graph of the blocked-by links and the legend 🟡 🧪 ✅ ⛔; same files never in one wave. `run-epic` fills the status as it runs |
 | `## Hors de l'épic, exprès` | Deliberately out of the epic |
 | `## Fini quand` | The epic's own criteria, not "all children closed" |
+
+The children are not listed in the body: they are the epic's sub-issues, shown
+by GitHub or Linear under the epic.
 
 ## Where tickets go
 

@@ -13,7 +13,7 @@ Claude Code the skills to follow it:
 
 It works with GitHub issues, GitHub Projects boards and Linear.
 
-> Up to date as of 2026-10-13 (`ticket-flow` 0.3.0, `orchestra` 0.4.0), tested with Claude Code 2.1.295.
+> Up to date as of 2026-10-13 (`ticket-flow` 0.4.0, `orchestra` 0.4.0), tested with Claude Code 2.1.295.
 
 ## Install
 
@@ -26,7 +26,9 @@ In a Claude Code session:
 
 Answer `y` to add the marketplace, then pick a scope (user scope is the usual
 choice). `orchestra` is optional: it uses the Claude Code mods API, which is
-still in early access.
+still in early access. `ticket-flow` uses the same API for its update band
+only: without it, the skills, agent and hooks work as before, and you update
+with `/plugin` as usual.
 
 Then, once per project:
 
@@ -63,6 +65,7 @@ flowchart LR
 | `project-docs` | skill | Documentation standard (layout, naming, Mermaid, SVG) and a docs audit mode. |
 | `brainstorm` | skill | Facilitated session about the project: ground, diverge, converge, turn picks into tickets. |
 | doc reminder | hook | Before every `git commit`, reminds Claude to check the docs still describe the code. |
+| update band | built-in mod | A row above the prompt when a newer `ticket-flow` is published, with an **Update** button that installs it and reloads plugins in the open session; also offers `setup-project` when the project's `## Workflow` section is from an older template. |
 | `orchestra` | mod | `/orchestra` pane: current stage, each subagent with its duration, last tool and context fill; the shell commands they run, with the live tail of background ones; a one-line status file for the status line. |
 
 ## Documentation

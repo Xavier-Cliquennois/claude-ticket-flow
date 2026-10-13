@@ -95,10 +95,14 @@ rather than duplicating). Fix stale pointers you found. Show the diff
 (`git diff CLAUDE.md`) and summarize it; do not commit unless asked.
 
 The Workflow section, filled with the project's real values (delete lines that do
-not apply, never leave placeholders):
+not apply, never leave placeholders). Keep the `<!-- ticket-flow workflow: N -->`
+line right under the heading, with the number shown: the plugin's update band
+compares it with the template's and offers this skill when the project's
+section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
+<!-- ticket-flow workflow: 2 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -115,7 +119,7 @@ not apply, never leave placeholders):
 - Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord ; Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois ; sinon écrire « test navigateur NON FAIT » et pourquoi.
 - Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion ; un constat HIGH/MEDIUM bloque la fusion ; un constat hors périmètre devient un ticket `sécurité`.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
-- Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer seulement quand tout est coché, ouvrir les tickets révélés.
+- Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut) ; ne reste qu'une vérification à la main → « à valider » ; reste du code → ticket de suite, jamais un ticket laissé ouvert ; ouvrir les tickets révélés.
 
 ### Épics
 - Lancés avec le skill `run-epic`, par vagues, **<N> agents en parallèle au maximum**.

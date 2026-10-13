@@ -80,7 +80,7 @@ final merge, and the report format.
 | Agent reports | Orchestrator does |
 |---|---|
 | READY TO MERGE | runs `security-reviewer`; BLOCKING → sends the findings back; OK → "merge", once the previous merge is done |
-| MERGED | ticks the epic line, comments, checks the ticket is closed or moved, refills the slot |
+| MERGED | checks the ticket's real state: closed → ✅; to validate → 🧪; code left → follow-up ticket, original closed; comments the epic, refills the slot |
 | BLOCKED / NOT DELIVERED | comments the reason, parks the ticket, refills the slot; relaunches once at most |
 | revealed tickets | creates them with `write-ticket` (sub-issue if the epic needs them) |
 
@@ -93,10 +93,27 @@ launched → in progress; parked → blocked; merged with a human check left →
 validate; closed → done. The epic stays in progress until it closes.
 
 The epic body follows along: in the "Vagues" section, the table's status
-column and the Mermaid graph's nodes switch to 🟡 (yellow) when a ticket is
-launched, ✅ (green) when it is merged, ⛔ (red) when it is parked or blocked.
-A wave is ✅ once all its tickets are merged. An epic written before this
-section existed gets it added in pre-flight.
+column and the Mermaid graph's nodes show each ticket's state:
+
+| State | Emoji | Node | When |
+|---|---|---|---|
+| in progress | 🟡 | yellow | launched, not merged yet |
+| to validate | 🧪 | blue | merged, only a human check left (ticket open) |
+| done | ✅ | green | ticket closed |
+| blocked | ⛔ | red | parked or blocked |
+
+A wave is ✅ once all its tickets are closed, 🧪 when all are merged and one
+still waits for its check. A 🧪 ticket unblocks the tickets that wait for it:
+its code is merged. When you have done the check, say so (« j'ai testé #380,
+c'est bon »): `deliver-ticket` ticks the box, closes the ticket, and the node
+turns ✅. A resumed run re-reads every state from the tracker first.
+
+A merged ticket with code or tests left is not kept open: the orchestrator
+creates a follow-up ticket with the remaining boxes, closes the original, and
+adds the follow-up to the epic's table and graph, like any ticket revealed
+during the run (in a wave not started yet when it fits, otherwise a new row).
+
+An epic written before this section existed gets it added in pre-flight.
 
 ### 4. Closing
 

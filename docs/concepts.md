@@ -52,6 +52,13 @@ verify without asking the author: a command, a number, a browser recipe. No
 closed only when every box is honestly ticked. A parent never closes just
 because its children did.
 
+After the merge, a ticket ends in one of three ways: every box ticked →
+closed (by hand: GitHub only auto-closes on a merge into the default branch);
+only a human check left (a visual, a measurement on a device) → open in
+« to validate »; code or tests left → closed on what was delivered, with the
+rest moved to a follow-up ticket. An open ticket with a merged PR therefore
+always means « only a check is left ».
+
 ### A model label on every ticket
 
 `model:opus` when the agent has to choose between options the ticket does not

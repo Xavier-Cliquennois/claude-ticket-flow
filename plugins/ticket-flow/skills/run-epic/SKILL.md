@@ -44,7 +44,9 @@ Talk to the user in their language.
 - *(epic only)* The epic's "Vagues" section must hold the table with a "Statut"
   column and the Mermaid graph of `write-ticket` §5. Missing, or out of date
   with the waves you just built → rewrite that section (and only it) in the
-  epic body before launching.
+  epic body before launching. On a resumed run, first re-derive every status
+  from the tracker (state, board column): a human check done since the last run
+  turns a 🧪 into ✅, and the body may lag behind.
 - Tickets whose "Fini quand" needs a human eye (annotation, visual judgment,
   a product decision) are parked: they will not be launched unattended.
 - Publish the plan in the terminal: waves, N, parked tickets, and the order you
@@ -64,14 +66,23 @@ closing.
 the same moments as the board (launch, merge, park). Re-read the body just
 before each edit (someone may have changed it), change only that section, write
 it back (`gh issue edit E --body-file <tmp>`, or the Linear MCP).
-- Table, "Statut" cell of the wave: empty before any of its tickets is launched;
-  🟡 once one is launched; ✅ when all of them are merged; ⛔ when none is running
-  and at least one is parked or blocked.
-- Graph, node of the ticket: label `"#N 🟡"` and `class tN enCours` when
-  launched; `"#N ✅"` and `class tN fini` when merged; `"#N ⛔"` and
-  `class tN bloque` when parked or blocked. One `class` line per ticket, placed
-  after the `classDef` lines; replace it, never stack two for the same ticket.
-- A revealed ticket that joins the epic gets its node, its arrows and a wave row.
+- Ticket states: 🟡 `enCours` launched, not merged yet; 🧪 `aTester` merged,
+  open in « à valider » (only a human check left); ✅ `fini` closed; ⛔ `bloque`
+  parked or blocked. A ticket is ✅ only when closed, never just because its PR
+  merged.
+- Graph, node of the ticket: label `"#N <emoji>"` and `class tN <classe>`. One
+  `class` line per ticket, placed after the `classDef` lines; replace it, never
+  stack two for the same ticket. An older epic without the `aTester` classDef
+  or the legend gets them added.
+- Table, "Statut" cell of the wave, first rule that applies: empty if none of
+  its tickets is launched; ⛔ if none is running and at least one is parked or
+  blocked; 🟡 if at least one is launched and not merged; 🧪 if all are merged
+  and at least one waits for its check; ✅ if all are closed.
+- A ticket added during the run (follow-up or revealed, inside the epic): sub-issue
+  of the epic, node with an arrow from the ticket it comes from when it
+  depends on it, and a place in the waves: in a wave not started yet if its
+  blockers allow it and it shares no files with that wave's tickets, otherwise
+  a new row at the end. Renumber nothing: a new row can be « 3 bis ».
 
 Keep a slot table: at most N running agents, and at most one agent holding each
 exclusive resource the CLAUDE.md names.
@@ -92,16 +103,27 @@ When an agent reports:
      (`write-ticket`); then SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
-2. **FUSIONNÉ** → *(epic only)* tick the epic's line, set the ticket ✅ in the
-   "Vagues" table and graph, comment the epic with one
-   line (ticket, merge commit, what it changed); then check the agent closed or moved its ticket as the
-   project requires. Launch whatever is now unblocked to refill the slot.
+2. **FUSIONNÉ** → check the ticket's real state (`gh issue view N --json
+   state`, board column) against the report's « Suite » line:
+   - fermé → *(epic only)* tick the epic's line; ticket ✅.
+   - à valider → ticket 🧪; it is a human's job now, tell the user what to
+     check in the closing summary (and at once if they are present).
+   - reste (code) → create the follow-up ticket (`write-ticket`, follow-up
+     shape), move the boxes (`- [x] ~~<case>~~ → déplacée vers #M`), close the
+     ticket (or « à valider » if human checks remain too), add the follow-up to
+     the epic as below. Launch it in this run only if the epic cannot close
+     without it, like a revealed ticket.
+   *(epic only)* Update the "Vagues" table and graph, comment the epic with one
+   line (ticket, merge commit, what it changed, follow-up if any). Launch
+   whatever is now unblocked to refill the slot. A ticket in 🧪 unblocks its
+   dependants: its code is merged.
 3. **BLOQUÉ / NON LIVRÉ** → comment the ticket with the reason, park it, refill the
    slot with the next ticket. Re-launch a ticket at most once, with the previous
    report in the prompt.
 4. **Tickets révélés** in a report → create them with `write-ticket` (sub-issue of
    the epic if they serve its "Fini quand", otherwise standalone with « pas urgent »).
-   In an autonomous run, launch a revealed ticket only if the epic cannot close
+   One inside the epic goes into its "Vagues" table and graph at once (rules
+   above). In an autonomous run, launch a revealed ticket only if the epic cannot close
    without it.
 
 Never call AskUserQuestion while agents run: a modal question stops refilling
@@ -148,8 +170,12 @@ prévu, arrête-toi proprement et propose un découpage plutôt que de tout fair
 
 Arrête-toi AVANT la fusion finale et envoie un rapport « PRÊT À FUSIONNER ».
 J'attends la revue de sécurité puis je t'écris « fusionne » : tu fusionnes alors
-selon le CLAUDE.md, tu coches les cases du ticket, tu le commentes/fermes/passes
-en Testing comme le projet le veut, et tu envoies « FUSIONNÉ ».
+selon le CLAUDE.md, tu coches les cases du ticket, tu le commentes, puis :
+toutes cochées → tu le fermes toi-même (`gh issue close` : GitHub ne ferme rien
+quand la cible n'est pas la branche par défaut) ; il ne reste qu'une vérification
+à la main → « à valider », avec quoi vérifier et comment ; il reste du code ou
+des tests → tu le laisses ouvert et tu listes ces cases en « Reste (code) ».
+Puis tu envoies « FUSIONNÉ ».
 
 Rapport (25 lignes max, rien d'autre) :
 ÉTAT : PRÊT À FUSIONNER | FUSIONNÉ | BLOQUÉ | NON LIVRÉ
@@ -158,6 +184,7 @@ Fini quand : chaque case, cochée ou non, avec la preuve en une ligne
 Vérifs : commande → résultat
 Navigateur : Chrome | Playwright | NON FAIT (raison)
 Doc : mise à jour (fichiers) | aucune concernée
+Suite : fermé | à valider (quoi vérifier, qui) | reste (code) : cases non faites
 Tickets révélés : titre + une ligne chacun
 Risques / ce que je n'ai pas pu vérifier :
 ```
@@ -169,6 +196,6 @@ terminal (delivered with merge commits, parked and why, revealed tickets).
 
 When no ticket is left to launch: comment the epic with a summary (what was
 delivered with merge commits, what is parked and why, revealed tickets, the epic's
-own "Fini quand" box by box). Close the epic only if its own boxes are honestly
+own "Fini quand" box by box). List every 🧪 ticket with what to check and who. Close the epic only if its own boxes are honestly
 ticked: a parent never closes just because its children did. Then tell the user, in
 a few lines, what needs them (parked tickets, decisions, human checks).

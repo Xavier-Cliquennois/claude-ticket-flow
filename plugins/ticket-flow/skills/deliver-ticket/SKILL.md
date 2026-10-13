@@ -1,6 +1,6 @@
 ---
 name: deliver-ticket
-description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N".
+description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
 ---
 
 # deliver-ticket
@@ -114,11 +114,33 @@ shows it live:
 
 ## 8. Close
 
-- Tick each « Fini quand » box you proved; leave the human-eye ones unticked.
+- Tick each « Fini quand » box you proved; leave the others unticked.
 - Comment the ticket in a few lines: what changed, merge commit, how each box
-  was checked, what is left to a human.
-- Close only when every box is ticked; otherwise move it to « à valider » (or
-  the project's equivalent, e.g. Testing). Board to match.
+  was checked, what is left.
+- Then exactly one of three outcomes, from the unticked boxes:
+  1. **None left** → close it yourself (`gh issue close N --comment ...`).
+     GitHub's `Closes #N` only fires on a merge into the default branch: a
+     merge into an integration branch (`dev`, `refacto/x`) closes nothing.
+     Check `gh issue view N --json state` after the merge; never assume.
+  2. **Only human checks left** (visual judgment, a flash on a board, a
+     measurement on a device, a product sign-off; no code to write) → keep it
+     open, move it to « à valider » (or the project's equivalent, e.g.
+     Testing), and the comment lists what to check, how, and who.
+  3. **Code or tests left** (a partial delivery) → never leave it open for
+     that: an open ticket with a merged PR must mean « only a check is left ».
+     Direct mode: create the follow-up ticket (`write-ticket`, follow-up
+     shape), in this ticket replace each moved box by
+     `- [x] ~~<case>~~ → déplacée vers #M`, then apply outcome 1 or 2 to what
+     remains. Agent mode: leave the ticket open and list the unticked boxes
+     under « Reste (code) » in the report; the orchestrator creates the
+     follow-up and closes the ticket.
+- Later, when someone reports the check done (« j'ai testé #N, c'est bon »):
+  tick the box with their words as proof, comment, close, board → « fini »,
+  epic node → ✅. A failed check is a bug on the ticket: say what failed in a
+  comment, reopen the work (or a follow-up ticket if the code is merged).
+- Board to match. Direct mode, ticket in an epic whose body has a « Vagues »
+  section: update its node and wave cell as `run-epic` §2 says (agent mode: the
+  orchestrator does it).
 - Revealed tickets → create them with `write-ticket` (sub-issue of the parent
   epic if they serve its « Fini quand », otherwise standalone, « pas urgent »).
 - Agent mode: send the report with ÉTAT « FUSIONNÉ ».
@@ -134,6 +156,7 @@ Fini quand : chaque case, cochée ou non, avec la preuve en une ligne
 Vérifs : commande → résultat
 Navigateur : Chrome | Playwright | NON FAIT (raison)
 Doc : mise à jour (fichiers) | aucune concernée
+Suite : fermé | à valider (quoi vérifier, qui) | reste (code) : cases non faites
 Tickets révélés : titre + une ligne chacun
 Risques / ce que je n'ai pas pu vérifier :
 ```
