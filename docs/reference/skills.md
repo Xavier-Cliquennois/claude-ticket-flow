@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
+> Up to date as of 2026-10-13 (ticket-flow 0.3.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -87,7 +87,9 @@ Key behaviours:
 - one agent at a time on each exclusive resource;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
-- board kept true; epic closed only on its own checklist;
+- board kept true; the epic's wave table and Mermaid graph show each
+  ticket's status (🟡 in progress, ✅ merged, ⛔ parked or blocked);
+- epic closed only on its own checklist;
 - publishes its stage to `orchestra` when the mod is installed.
 
 The ticket agent prompt (in the skill) fixes the report format:

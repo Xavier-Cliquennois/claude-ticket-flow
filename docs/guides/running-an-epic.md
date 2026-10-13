@@ -92,6 +92,12 @@ With a GitHub Projects board or Linear statuses, cards move as work does:
 launched → in progress; parked → blocked; merged with a human check left → to
 validate; closed → done. The epic stays in progress until it closes.
 
+The epic body follows along: in the "Vagues" section, the table's status
+column and the Mermaid graph's nodes switch to 🟡 (yellow) when a ticket is
+launched, ✅ (green) when it is merged, ⛔ (red) when it is parked or blocked.
+A wave is ✅ once all its tickets are merged. An epic written before this
+section existed gets it added in pre-flight.
+
 ### 4. Closing
 
 The orchestrator comments the epic with what was delivered (with merge

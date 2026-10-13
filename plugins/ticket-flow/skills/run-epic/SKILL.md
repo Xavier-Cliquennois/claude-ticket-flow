@@ -41,6 +41,10 @@ Talk to the user in their language.
   too big for one agent is the main cause of agents that run out of context.
 - Build the waves: blocked-by order, then no two tickets touching the same files in
   the same wave (use their "Fichiers probablement touchés").
+- *(epic only)* The epic's "Vagues" section must hold the table with a "Statut"
+  column and the Mermaid graph of `write-ticket` §5. Missing, or out of date
+  with the waves you just built → rewrite that section (and only it) in the
+  epic body before launching.
 - Tickets whose "Fini quand" needs a human eye (annotation, visual judgment,
   a product decision) are parked: they will not be launched unattended.
 - Publish the plan in the terminal: waves, N, parked tickets, and the order you
@@ -55,6 +59,19 @@ cours »; parked or blocked → « bloqué »; merged and waiting for a human ch
 « à valider » (or « fini » if the board has no such state and every box is
 ticked); closed → « fini ». *(epic only)* The epic card is « en cours » from launch to
 closing.
+
+*(epic only)* Wave status in the epic body: keep the "Vagues" section true at
+the same moments as the board (launch, merge, park). Re-read the body just
+before each edit (someone may have changed it), change only that section, write
+it back (`gh issue edit E --body-file <tmp>`, or the Linear MCP).
+- Table, "Statut" cell of the wave: empty before any of its tickets is launched;
+  🟡 once one is launched; ✅ when all of them are merged; ⛔ when none is running
+  and at least one is parked or blocked.
+- Graph, node of the ticket: label `"#N 🟡"` and `class tN enCours` when
+  launched; `"#N ✅"` and `class tN fini` when merged; `"#N ⛔"` and
+  `class tN bloque` when parked or blocked. One `class` line per ticket, placed
+  after the `classDef` lines; replace it, never stack two for the same ticket.
+- A revealed ticket that joins the epic gets its node, its arrows and a wave row.
 
 Keep a slot table: at most N running agents, and at most one agent holding each
 exclusive resource the CLAUDE.md names.
@@ -75,7 +92,8 @@ When an agent reports:
      (`write-ticket`); then SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
-2. **FUSIONNÉ** → *(epic only)* tick the epic's line, comment the epic with one
+2. **FUSIONNÉ** → *(epic only)* tick the epic's line, set the ticket ✅ in the
+   "Vagues" table and graph, comment the epic with one
    line (ticket, merge commit, what it changed); then check the agent closed or moved its ticket as the
    project requires. Launch whatever is now unblocked to refill the slot.
 3. **BLOQUÉ / NON LIVRÉ** → comment the ticket with the reason, park it, refill the

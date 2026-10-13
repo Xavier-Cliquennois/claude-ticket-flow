@@ -110,9 +110,22 @@ Le problème et le chiffre (ou le résultat utilisateur) qui dira qu'il est atte
 |---|---|---|---|---|
 
 ## Vagues
-- Vague 1 (en parallèle) : #a, #b — pourquoi ensemble
-- Vague 2 : #c (attend #a : <raison>)
+| Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
+|---|---|---|---|---|
+| 1 | #a (opus), #b (sonnet) | rien | pourquoi ensemble | |
+| 2 | #c (opus) | #a | <raison> | |
+
+Chemin critique : #a → #c.
 Règle : deux tickets qui touchent les mêmes fichiers ne sont jamais dans la même vague.
+
+```mermaid
+flowchart LR
+  ta["#a"] --> tc["#c"]
+  tb["#b"]
+  classDef enCours fill:#fde68a,stroke:#b45309,color:#000
+  classDef fini fill:#bbf7d0,stroke:#15803d,color:#000
+  classDef bloque fill:#fecaca,stroke:#b91c1c,color:#000
+```
 
 ## Hors de l'épic, exprès
 ## Fini quand
@@ -121,6 +134,13 @@ Règle : deux tickets qui touchent les mêmes fichiers ne sont jamais dans la m�
 
 Waves come from blocked-by links AND file overlap (compare the "Fichiers
 probablement touchés" lists). Keep a wave within the project's max parallel agents.
+
+The "Vagues" section always has both the table and the Mermaid graph:
+- Table: one row per wave; "Attend" lists the tickets the wave waits for;
+  "Statut" is empty at creation.
+- Graph: one node per child, id `t<N>`, label `"#<N>"`, an arrow per blocked-by
+  link (blocker → blocked). Keep the three `classDef` lines even if unused:
+  `run-epic` colours the nodes with them as the epic runs (see run-epic §2).
 
 ## 6. Create it
 
