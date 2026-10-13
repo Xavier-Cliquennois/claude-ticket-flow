@@ -44,6 +44,10 @@ plain list of tickets), not this skill.
   proposed split.
 - Boxes that need a human eye (visual judgment, a product decision, a real
   device) are noted now: you will not tick them yourself.
+- Something in the ticket unclear or contradicted by the code: the person in
+  « Créé par » is the one to ask (a comment mentioning `@<login>`, after the
+  user's yes); never guess the intent. In agent mode, report « BLOQUÉ » with
+  the question and who to ask.
 
 ## 2. Start
 

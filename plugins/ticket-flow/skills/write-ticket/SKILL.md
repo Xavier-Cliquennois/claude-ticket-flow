@@ -68,6 +68,7 @@ Title: the finding or the outcome, concrete, with numbers when there are some
 ```markdown
 ## Contexte
 D'où ça vient : ticket/épic d'origine, date, constat chiffré ou capture.
+Créé par : @<login>, le <date> : à contacter si quelque chose n'est pas clair.
 
 ## Ce qu'on veut
 Le résultat attendu, en une ou deux phrases. Les décisions déjà prises.
@@ -104,6 +105,7 @@ uploads, secrets or payments, add the `sécurité` label and a box
 ```markdown
 ## Pourquoi cet épic
 Le problème et le chiffre (ou le résultat utilisateur) qui dira qu'il est atteint.
+Créé par : @<login>, le <date> : à contacter si quelque chose n'est pas clair.
 
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
@@ -152,9 +154,28 @@ ticket stays open in « à valider ».
 
 ## 6. Create it
 
+Who wrote it, who takes it, settled before creating:
+- **Créé par**: the person you are writing the ticket with, the one to ask
+  when something is unclear. GitHub: `gh api user --jq .login`, written
+  `@<login>` (Claude creates the issue with their account, but the line says
+  it in the body, where the agent and the reviewer read it). Linear: the user
+  the MCP acts for. When they relay someone else's need, keep both: « Créé
+  par : @<login> », and « Demandé par : <qui> » in « Contexte ».
+- **Assignation**: always ask who takes the ticket, even with no name to
+  suggest: the habit matters more than the answer. Choices: the user
+  (`@me`), someone else, nobody for now. With AskUserQuestion, add up to two
+  names from `gh api repos/<owner>/<repo>/assignees --jq '.[].login'` (people
+  recently active on the subject first); never pick for the user. A split asks
+  once: the same person for all, ticket by ticket, or nobody.
+- Nobody to ask (a ticket revealed or followed up by `run-epic` while agents
+  run): « Créé par » is the user who launched the run, followed by « via
+  run-epic, révélé par #N » (or « suite de #N »); a follow-up keeps the
+  assignee of #N, a revealed ticket stays unassigned and is listed « à
+  assigner » in the closing summary.
+
 GitHub:
-- `gh issue create --title ... --body-file <tmp> --label ...`; read back the
-  number it returns, never assume it.
+- `gh issue create --title ... --body-file <tmp> --label ... [--assignee <login>]`;
+  read back the number it returns, never assume it.
 - Sub-issue / blocked-by links through GraphQL with node ids
   (`gh api graphql -f query='mutation{addSubIssue(input:{issueId:"<parent>",subIssueId:"<child>"}){issue{number}}}'`,
   same with `addBlockedBy`). Get node ids with `gh issue view N --json id`.
@@ -170,12 +191,12 @@ epic included, and set its fields.
   Status = the board's « à faire » option (« bloqué » if it has an open blocker),
   plus the custom fields the CLAUDE.md lists (e.g. Phase).
 
-Linear: `save_issue` through the Linear MCP with the same body, labels from the
+Linear: `save_issue` through the Linear MCP with the same body, `assignee`, labels from the
 "Modèle IA" and "Taille" groups, `parentId` for children, `relatedTo` for
 carve-outs. In Linear an epic is a parent issue (its children carry `parentId`)
 or a Linear project; an `epic` label is optional, never required to find one.
 
 ## 7. Announce
 
-Tell the user, per ticket: number, title, labels, and either
-« à traiter à la suite » or « pas urgent ». If you split, show the epic table.
+Tell the user, per ticket: number, title, labels, assignee (or « non
+assigné »), and either « à traiter à la suite » or « pas urgent ». If you split, show the epic table.

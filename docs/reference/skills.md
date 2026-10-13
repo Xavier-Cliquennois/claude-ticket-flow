@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-13 (ticket-flow 0.4.0).
+> Up to date as of 2026-10-13 (ticket-flow 0.5.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -38,10 +38,12 @@ this", tickets revealed during a delivery.
    ticket does not settle, else `model:sonnet`.
 4. **Template**: child ticket or epic ([templates](tickets-and-labels.md#templates)).
    Security-sensitive tickets get the `sécurité` label and a review box.
-5. **Create**: `gh issue create`, sub-issue and blocked-by links through GraphQL
+5. **Create**: asks who takes the ticket (you, someone else, nobody for now:
+   always asked), writes « Créé par : @login » in the body
+   ([why](tickets-and-labels.md#author-and-assignee)), then `gh issue create`, sub-issue and blocked-by links through GraphQL
    (`addSubIssue`, `addBlockedBy`), board item and fields
    (`gh project item-add`, `item-edit`), or Linear `save_issue` with `parentId`.
-6. **Announce**: number, title, labels, and "next" or "not urgent".
+6. **Announce**: number, title, labels, assignee, and "next" or "not urgent".
 
 ## deliver-ticket
 

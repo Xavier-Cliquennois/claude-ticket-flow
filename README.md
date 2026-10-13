@@ -13,7 +13,7 @@ Claude Code the skills to follow it:
 
 It works with GitHub issues, GitHub Projects boards and Linear.
 
-> Up to date as of 2026-10-13 (`ticket-flow` 0.4.0, `orchestra` 0.4.1), tested with Claude Code 2.1.295.
+> Up to date as of 2026-10-13 (`ticket-flow` 0.5.0, `orchestra` 0.4.1), tested with Claude Code 2.1.295.
 
 ## Install
 
@@ -58,7 +58,7 @@ flowchart LR
 | Piece | Kind | What it does |
 |---|---|---|
 | `setup-project` | skill | Checks git, the GitHub remote, the tracker and its labels, offers to create what is missing, writes the `## Workflow` section of `CLAUDE.md`. |
-| `write-ticket` | skill | Ticket and epic templates with a "done when" checklist; model, size, type and security labels; **splits tickets too big for one agent**; puts tickets on the board. |
+| `write-ticket` | skill | Ticket and epic templates with a "done when" checklist and who created it (the person to ask); always asks who takes the ticket; model, size, type and security labels; **splits tickets too big for one agent**; puts tickets on the board. |
 | `deliver-ticket` | skill | Delivers one ticket end to end in the session: worktree, build, verify, docs, security review, merge, boxes, board. Also the procedure `run-epic`'s agents follow. |
 | `run-epic` | skill | Orchestrates an epic or a list of tickets in the background: waves, capped parallel agents, security gate, serialized merges, checkboxes, board moves, revealed tickets. |
 | `security-reviewer` | agent | Read-only review of a diff; verdict BLOCKING / OK WITH RESERVATIONS / OK with verified findings. |

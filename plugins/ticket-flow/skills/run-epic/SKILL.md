@@ -109,7 +109,7 @@ When an agent reports:
    - à valider → ticket 🧪; it is a human's job now, tell the user what to
      check in the closing summary (and at once if they are present).
    - reste (code) → create the follow-up ticket (`write-ticket`, follow-up
-     shape), move the boxes (`- [x] ~~<case>~~ → déplacée vers #M`), close the
+     shape, author and assignee as in `write-ticket` §6), move the boxes (`- [x] ~~<case>~~ → déplacée vers #M`), close the
      ticket (or « à valider » if human checks remain too), add the follow-up to
      the epic as below. Launch it in this run only if the epic cannot close
      without it, like a revealed ticket.
@@ -121,7 +121,8 @@ When an agent reports:
    slot with the next ticket. Re-launch a ticket at most once, with the previous
    report in the prompt.
 4. **Tickets révélés** in a report → create them with `write-ticket` (sub-issue of
-   the epic if they serve its "Fini quand", otherwise standalone with « pas urgent »).
+   the epic if they serve its "Fini quand", otherwise standalone with « pas urgent »;
+   « Créé par » the user via run-epic, unassigned).
    One inside the epic goes into its "Vagues" table and graph at once (rules
    above). In an autonomous run, launch a revealed ticket only if the epic cannot close
    without it.
@@ -196,6 +197,7 @@ terminal (delivered with merge commits, parked and why, revealed tickets).
 
 When no ticket is left to launch: comment the epic with a summary (what was
 delivered with merge commits, what is parked and why, revealed tickets, the epic's
-own "Fini quand" box by box). List every 🧪 ticket with what to check and who. Close the epic only if its own boxes are honestly
+own "Fini quand" box by box). List every 🧪 ticket with what to check and who, and every ticket created
+during the run still « à assigner ». Close the epic only if its own boxes are honestly
 ticked: a parent never closes just because its children did. Then tell the user, in
 a few lines, what needs them (parked tickets, decisions, human checks).
