@@ -36,6 +36,8 @@ declare module 'claude-code' {
       agents: Record<string, AgentRow>
       shells: Record<string, ShellRow>
       tick: number
+      // Whether the COMMANDES block is unfolded.
+      commandsOpen: boolean
     }
   }
 }

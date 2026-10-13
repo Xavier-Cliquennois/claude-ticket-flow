@@ -11,10 +11,13 @@ const stage = atom({ plugin: 'orchestra', key: 'stage' } as const, null)
 const agents = atom({ plugin: 'orchestra', key: 'agents' } as const, {})
 const shells = atom({ plugin: 'orchestra', key: 'shells' } as const, {})
 const tick = atom({ plugin: 'orchestra', key: 'tick' } as const, 0)
+const commandsOpen = atom({ plugin: 'orchestra', key: 'commandsOpen' } as const, false)
 
 // Commands kept in the pane: every running one, plus the latest ended ones.
 const KEPT_SHELLS = 12
 const TAIL_LINES = 3
+// Commands listed when the COMMANDES block is unfolded.
+const SHOWN_SHELLS = 3
 const TAIL_BYTES = 4096
 
 const pad2 = (n: number): string => String(n).padStart(2, '0')
@@ -392,10 +395,11 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
     await read($, tick)
     const now = await $.clock.now()
     const current = await read($, stage)
+    const isOpen = await read($, commandsOpen)
     const rows = Object.values(await read($, agents))
     const running = rows.filter(row => row.endedAt === undefined).sort((a, b) => b.startedAt - a.startedAt)
     const ended = rows
@@ -407,6 +411,9 @@ export const register: Register = on => {
       .reverse()
       .sort((a, b) => b.startedAt - a.startedAt)
     const runningShells = shellRows.filter(row => row.endedAt === undefined)
+    const endedShells = shellRows
+      .filter(row => row.endedAt !== undefined)
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
     // Room inside the pane, then inside the header frame (border and padding).
     const width = Math.max(30, (e.viewport?.columns ?? 60) - 4)
     const inner = width - 4
@@ -425,12 +432,12 @@ export const register: Register = on => {
 
     // One command: a coloured summary line, the command line under it, and
     // the last lines of its output (a running one) or its very last (ended).
-    const shellLines = (row: ShellRow, indent: string, withOwner: boolean) => {
+    const shellLines = (row: ShellRow) => {
       const isDone = row.endedAt !== undefined
       const failed = row.status === 'failed' || row.status === 'killed'
       const mark = failed ? '✗' : isDone ? '✓' : '⏵'
       const summary = [
-        withOwner ? owner(row) : undefined,
+        owner(row),
         row.description === '' ? undefined : row.description,
         durationText((row.endedAt ?? now) - row.startedAt),
         row.isBackground ? 'fond' : undefined,
@@ -439,20 +446,17 @@ export const register: Register = on => {
         .filter(part => part !== undefined)
         .join(' · ')
       const tail = isDone ? row.tail.slice(-1) : row.tail
-      const room = width - indent.length - 2
+      const room = width - 2
       return [
-        <Text color={failed ? 'red' : isDone ? 'green' : 'yellow'} bold={!isDone}>
-          {indent}
+        <Text color={failed ? 'red' : isDone ? 'green' : 'yellow'} bold={!isDone} wrap="truncate-end">
           {mark} {cut(summary, room)}
         </Text>,
-        <Text color="cyan" dimColor={isDone}>
-          {indent}
+        <Text color="cyan" dimColor={isDone} wrap="truncate-end">
           {'  $ '}
           {cut(row.command, room - 2)}
         </Text>,
         ...tail.map(tailLine => (
-          <Text dimColor>
-            {indent}
+          <Text dimColor wrap="truncate-end">
             {'  │ '}
             {cut(tailLine, room - 2)}
           </Text>
@@ -461,7 +465,13 @@ export const register: Register = on => {
     }
     const shellHeight = (row: ShellRow): number => 2 + (row.endedAt === undefined ? row.tail.length : Math.min(1, row.tail.length))
 
-    // A section title: bold label, dim count, a rule to the edge.
+    // A section title: bold label, dim count, a rule to the edge, cut rather
+    // than wrapped when the pane is narrower than its viewport says.
+    const rule = (head: string) => (
+      <Text dimColor wrap="truncate">
+        {'─'.repeat(Math.max(0, width - head.length - 1))}
+      </Text>
+    )
     const section = (label: string, count: number | undefined, color: string) => {
       const head = count === undefined ? label : `${label} · ${count}`
       return (
@@ -469,7 +479,7 @@ export const register: Register = on => {
           <Text bold color={color}>
             {head}{' '}
           </Text>
-          <Text dimColor>{'─'.repeat(Math.max(0, width - head.length - 1))}</Text>
+          {rule(head)}
         </Box>
       )
     }
@@ -495,7 +505,13 @@ export const register: Register = on => {
       const task = taskOf(row.label)
       const pct = percentOf(row)
       const shell = latestRunning(row.id)
-      const detail = [row.compactions > 0 ? `${row.compactions} compact.` : undefined, row.lastTool]
+      // The command it runs, with its age, takes the last tool's place: the
+      // card keeps its height whether a command runs or not.
+      const doing =
+        shell === undefined
+          ? row.lastTool
+          : `⏵ ${shell.description === '' ? shell.command : shell.description} · ${durationText(now - shell.startedAt)}`
+      const detail = [row.compactions > 0 ? `${row.compactions} compact.` : undefined, doing]
         .filter(part => part !== undefined)
         .join(' · ')
       const taskRoom = Math.max(4, width - name.length - elapsed.length - 6)
@@ -514,16 +530,17 @@ export const register: Register = on => {
           <Box flexDirection="row">
             <Text dimColor>{'  ctx '}</Text>
             {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
-            {detail !== '' && <Text dimColor> · {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}</Text>}
+            {detail !== '' && (
+              <Text dimColor={shell === undefined} color={shell === undefined ? undefined : 'yellow'} wrap="truncate-end">
+                {' · '}
+                {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}
+              </Text>
+            )}
           </Box>
-          {shell !== undefined && shellLines(shell, '  ', false)}
         </Box>
       )
     }
-    const cardHeight = (row: AgentRow): number => {
-      const shell = latestRunning(row.id)
-      return 2 + (shell === undefined ? 0 : shellHeight(shell))
-    }
+    const CARD_HEIGHT = 2
 
     // An ended agent: one line, name, task, duration and context fill.
     const nameWidth = Math.min(12, Math.max(0, ...ended.map(row => nameOf(row.label).length)))
@@ -548,6 +565,41 @@ export const register: Register = on => {
       )
     }
 
+    // The block's title is its toggle: a click, or "c" while the pane has the focus.
+    const toggle = () => {
+      void update($, commandsOpen, open => !open)
+    }
+    const commandsHead = () => {
+      const head = `${isOpen ? '▾' : '▸'} COMMANDES${runningShells.length > 0 ? ` · ${runningShells.length} en cours` : ''}`
+      return (
+        <Box flexDirection="row" marginTop={1}>
+          <Button key="commands" label={head} plain hotkey="c" onPress={toggle}>
+            <Text bold color="yellow">
+              {head}
+            </Text>
+          </Button>
+          <Text> </Text>
+          {rule(head)}
+        </Box>
+      )
+    }
+    const commandsLine = () => {
+      const row = runningShells[0] ?? endedShells[0]
+      if (row === undefined) return undefined
+      const isDone = row.endedAt !== undefined
+      const failed = row.status === 'failed' || row.status === 'killed'
+      const what = row.description === '' ? row.command : row.description
+      const when = isDone
+        ? `fini il y a ${durationText(now - (row.endedAt ?? now))}`
+        : `depuis ${durationText(now - row.startedAt)}`
+      const others = runningShells.length > 1 ? ` · +${runningShells.length - 1}` : ''
+      return (
+        <Text color={failed ? 'red' : isDone ? 'green' : 'yellow'} bold={!isDone} wrap="truncate-end">
+          {cut(`${failed ? '✗' : isDone ? '✓' : '⏵'} ${owner(row)} · ${what} · ${when}${others}`, width)}
+        </Text>
+      )
+    }
+
     const counts = [
       clockText(now),
       `${running.length} actif${running.length > 1 ? 's' : ''}`,
@@ -556,24 +608,25 @@ export const register: Register = on => {
     ]
       .filter(part => part !== undefined)
       .join(' · ')
-    const orchestratorShell = latestRunning(undefined)
     const stageText = current === null ? undefined : `▶ ${clean(current.text)}`
     const stageAge = current === null ? '' : ` ${durationText(now - current.at)}`
     room -= 3 + (stageText === undefined ? 1 : Math.ceil((stageText.length + stageAge.length) / inner))
-    if (orchestratorShell !== undefined) room -= shellHeight(orchestratorShell)
 
     // Running agents first, whole; the ended ones fill what is left.
     const shownCards: AgentRow[] = []
     if (running.length > 0) room -= 2
     for (const row of running) {
-      const height = cardHeight(row)
+      const height = CARD_HEIGHT
       if (height > room && shownCards.length > 0) break
       shownCards.push(row)
       room -= height
     }
-    // With no command running anywhere, the latest one stays in view.
-    const lastShell = runningShells.length === 0 ? shellRows[0] : undefined
-    if (lastShell !== undefined) room -= 2 + shellHeight(lastShell)
+    // The COMMANDES block. Folded, one line: the newest running command and
+    // how long it has run, else the last one ended and how long ago. Unfolded,
+    // the latest SHOWN_SHELLS, running first, each with its command line.
+    const shownShells = isOpen ? [...runningShells, ...endedShells].slice(0, SHOWN_SHELLS) : []
+    const hasShells = shellRows.length > 0
+    if (hasShells) room -= 2 + (isOpen ? shownShells.reduce((sum, row) => sum + shellHeight(row), 0) : 1)
     const endedRoom = Math.max(1, room - 2)
     const shownEnded = ended.length > endedRoom ? ended.slice(0, Math.max(1, endedRoom - 1)) : ended
 
@@ -596,16 +649,16 @@ export const register: Register = on => {
               <Text dimColor>{stageAge}</Text>
             </Box>
           )}
-          {orchestratorShell !== undefined && shellLines(orchestratorShell, '', true)}
-        </Box>
+          </Box>
         {rows.length === 0 && <Text dimColor>Aucun sous-agent pour l'instant.</Text>}
         {running.length > 0 && section('EN COURS', running.length, 'cyan')}
         {shownCards.map(card)}
         {shownCards.length < running.length && (
           <Text dimColor>… {running.length - shownCards.length} autre(s) en cours</Text>
         )}
-        {lastShell !== undefined && section('DERNIÈRE COMMANDE', undefined, 'yellow')}
-        {lastShell !== undefined && shellLines(lastShell, '', true)}
+        {hasShells && commandsHead()}
+        {hasShells && !isOpen && commandsLine()}
+        {shownShells.flatMap(shellLines)}
         {ended.length > 0 && section('TERMINÉS', ended.length, 'green')}
         {shownEnded.map(endedLine)}
         {shownEnded.length < ended.length && <Text dimColor>… {ended.length - shownEnded.length} de plus</Text>}

@@ -3,7 +3,7 @@
 What the optional `orchestra` mod shows, how the orchestrator feeds it, and its
 limits.
 
-> Up to date as of 2026-10-12 (orchestra 0.3.1). Uses the Claude Code mods
+> Up to date as of 2026-10-13 (orchestra 0.4.0). Uses the Claude Code mods
 > API, which is in early access and may change between releases.
 
 ## What it shows
@@ -40,15 +40,19 @@ TERMINÉS · 9 ─────────────────────�
 ```
 
 - **Header frame**: clock, running / ended / failed counts, the current stage
-  and how long ago it was published, and the orchestrator's own running
-  command, if any.
-- **EN COURS**: one card per running agent: name, task and duration; a
-  **context gauge** (green under 30 %, yellow from 30 %, red from 40 %),
-  compactions and last tool; then **only the command it is running now**. A
-  background command also shows the last 3 lines of its output, refreshed
-  every 5 seconds.
-- **DERNIÈRE COMMANDE**: shown only when no command runs anywhere: the latest
-  one, with who ran it and its last output line.
+  and how long ago it was published.
+- **EN COURS**: one two-line card per running agent: name, task and duration;
+  a **context gauge** (green under 30 %, yellow from 30 %, red from 40 %),
+  compactions, and the last tool, or, while the agent runs a command, that
+  command and how long it has run. A card keeps its height whether a command
+  runs or not, so the pane does not jump as commands follow one another.
+- **COMMANDES**: a foldable block, folded by default. Folded, it is one line:
+  the newest running command, who runs it and since when (`depuis 12 s`, `+N`
+  when others run too), else the last one ended (`fini il y a 3 s`). A click
+  on its title, or `c` while the pane has the focus, unfolds the latest 3
+  commands, running first, each with its command line; a running background
+  command also shows the last 3 lines of its output, refreshed every 5
+  seconds.
 - **TERMINÉS**: one aligned line per ended agent, newest first: ✓ or ✗, name,
   task, duration, context fill (coloured from 30 %); `failed` or `killed`
   spelled out. What does not fit ends in `… N de plus`.

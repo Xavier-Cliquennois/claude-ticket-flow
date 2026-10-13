@@ -13,7 +13,7 @@ Claude Code the skills to follow it:
 
 It works with GitHub issues, GitHub Projects boards and Linear.
 
-> Up to date as of 2026-10-13 (`ticket-flow` 0.3.0, `orchestra` 0.3.1), tested with Claude Code 2.1.295.
+> Up to date as of 2026-10-13 (`ticket-flow` 0.3.0, `orchestra` 0.4.0), tested with Claude Code 2.1.295.
 
 ## Install
 

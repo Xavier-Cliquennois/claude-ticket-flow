@@ -55,6 +55,9 @@ pre#term { margin: 0; padding: 14px 16px; font: 13px/1.45 var(--mono); white-spa
         <option value="empty">Démarrage (rien encore)</option>
       </select>
     </label>
+    <label for="open">Commandes dépliées
+      <input id="open" type="checkbox">
+    </label>
     <label for="cols">Colonnes <output id="colsOut"></output>
       <input id="cols" type="range" min="40" max="140" value="72">
     </label>
@@ -63,7 +66,7 @@ pre#term { margin: 0; padding: 14px 16px; font: 13px/1.45 var(--mono); white-spa
     </label>
   </div>
   <div class="term-wrap"><pre id="term" aria-label="Rendu simulé du panneau"></pre></div>
-  <p class="note">Même logique que <code>hooks/register.tsx</code> : agents en cours en cartes avec jauge de contexte et seule leur commande en cours, agents finis sur une ligne, dernière commande affichée seulement quand plus rien ne tourne. Les données sont des exemples. Ouvrir ce fichier dans un navigateur, aucun serveur nécessaire.</p>
+  <p class="note">Même logique que <code>hooks/register.tsx</code> : agents en cours en cartes de deux lignes, la commande en cours et sa durée à la place du dernier outil, agents finis sur une ligne. Le bloc COMMANDES tient sur une ligne replié (commande en cours et depuis quand, sinon la dernière finie) et liste les trois dernières déplié (clic sur son titre ou touche c). Les données sont des exemples. Ouvrir ce fichier dans un navigateur, aucun serveur nécessaire.</p>
 </main>
 
 <script>
@@ -134,7 +137,7 @@ const isFailed = r => r.status === 'failed' || r.status === 'killed'
 const ctxColor = p => p >= 40 ? 'red' : p >= 30 ? 'yellow' : 'green'
 const seg = (t, o = {}) => ({ t, ...o })
 
-function render(data, columns, viewRows) {
+function render(data, columns, viewRows, isOpen) {
   const now = NOW
   const rows = data.agents
   const running = rows.filter(r => r.endedAt === undefined).sort((a, b) => b.startedAt - a.startedAt)
@@ -142,6 +145,7 @@ function render(data, columns, viewRows) {
   const failedCount = ended.filter(isFailed).length
   const shellRows = [...data.shells].reverse().sort((a, b) => b.startedAt - a.startedAt)
   const runningShells = shellRows.filter(r => r.endedAt === undefined)
+  const endedShells = shellRows.filter(r => r.endedAt !== undefined).sort((a, b) => b.endedAt - a.endedAt)
   const width = Math.max(30, columns - 4)
   const inner = width - 4
   let room = Math.max(8, viewRows - 2)
@@ -150,17 +154,17 @@ function render(data, columns, viewRows) {
   const latestRunning = id => runningShells.find(s => s.agentId === id)
   const out = []
 
-  const shellLines = (s, indent, withOwner, w = width) => {
+  const shellLines = s => {
     const done = s.endedAt !== undefined
     const failed = s.status === 'failed' || s.status === 'killed'
-    const summary = [withOwner ? owner(s) : undefined, s.description || undefined, durationText((s.endedAt ?? now) - s.startedAt),
+    const summary = [owner(s), s.description || undefined, durationText((s.endedAt ?? now) - s.startedAt),
       s.isBackground ? 'fond' : undefined, done && s.status !== 'completed' ? s.status : undefined].filter(Boolean).join(' · ')
     const tail = done ? s.tail.slice(-1) : s.tail
-    const r = w - indent.length - 2
+    const r = width - 2
     return [
-      [seg(`${indent}${failed ? '✗' : done ? '✓' : '⏵'} ${cut(summary, r)}`, { c: failed ? 'red' : done ? 'green' : 'yellow', b: !done })],
-      [seg(`${indent}  $ ${cut(s.command, r - 2)}`, { c: 'cyan', d: done })],
-      ...tail.map(l => [seg(`${indent}  │ ${cut(l, r - 2)}`, { d: true })]),
+      [seg(`${failed ? '✗' : done ? '✓' : '⏵'} ${cut(summary, r)}`, { c: failed ? 'red' : done ? 'green' : 'yellow', b: !done })],
+      [seg(`  $ ${cut(s.command, r - 2)}`, { c: 'cyan', d: done })],
+      ...tail.map(l => [seg(`  │ ${cut(l, r - 2)}`, { d: true })]),
     ]
   }
   const shellHeight = s => 2 + (s.endedAt === undefined ? s.tail.length : Math.min(1, s.tail.length))
@@ -172,13 +176,24 @@ function render(data, columns, viewRows) {
   const gauge = p => { const f = Math.min(GAUGE, Math.round(p / 100 * GAUGE)); return [seg('█'.repeat(f), { c: ctxColor(p) }), seg('░'.repeat(GAUGE - f), { d: true }), seg(` ${p} %`, { c: ctxColor(p), b: true })] }
   const card = r => {
     const el = durationText(now - r.startedAt), name = nameOf(r.label), task = taskOf(r.label), p = pctOf(r), sh = latestRunning(r.id)
-    const detail = [r.compactions > 0 ? `${r.compactions} compact.` : undefined, r.lastTool].filter(Boolean).join(' · ')
+    const doing = sh ? `⏵ ${sh.description || sh.command} · ${durationText(now - sh.startedAt)}` : r.lastTool
+    const detail = [r.compactions > 0 ? `${r.compactions} compact.` : undefined, doing].filter(Boolean).join(' · ')
     const tr = Math.max(4, width - name.length - el.length - 6)
     out.push([seg(`● ${name}`, { c: 'cyan', b: true }), seg(' ' + cut(task, tr).padEnd(tr), { b: true }), seg(' ' + el, { c: 'cyan' })])
-    out.push([seg('  ctx ', { d: true }), ...(p === undefined ? [seg('—', { d: true })] : gauge(p)), ...(detail ? [seg(' · ' + cut(detail, Math.max(4, width - GAUGE - 16)), { d: true })] : [])])
-    if (sh) out.push(...shellLines(sh, '  ', false))
+    out.push([seg('  ctx ', { d: true }), ...(p === undefined ? [seg('—', { d: true })] : gauge(p)), ...(detail ? [seg(' · ' + cut(detail, Math.max(4, width - GAUGE - 16)), sh ? { c: 'yellow' } : { d: true })] : [])])
   }
-  const cardHeight = r => 2 + (latestRunning(r.id) ? shellHeight(latestRunning(r.id)) : 0)
+  const commandsHead = () => {
+    const head = `${isOpen ? '▾' : '▸'} COMMANDES${runningShells.length > 0 ? ` · ${runningShells.length} en cours` : ''}`
+    out.push([])
+    out.push([seg(head + ' ', { b: true, c: 'yellow' }), seg('─'.repeat(Math.max(0, width - head.length - 1)), { d: true })])
+  }
+  const commandsLine = () => {
+    const s = runningShells[0] ?? endedShells[0]
+    const done = s.endedAt !== undefined, failed = s.status === 'failed' || s.status === 'killed'
+    const when = done ? `fini il y a ${durationText(now - s.endedAt)}` : `depuis ${durationText(now - s.startedAt)}`
+    const others = runningShells.length > 1 ? ` · +${runningShells.length - 1}` : ''
+    out.push([seg(cut(`${failed ? '✗' : done ? '✓' : '⏵'} ${owner(s)} · ${s.description || s.command} · ${when}${others}`, width), { c: failed ? 'red' : done ? 'green' : 'yellow', b: !done })])
+  }
   const nameW = Math.min(12, Math.max(0, ...ended.map(r => nameOf(r.label).length)))
   const endedLine = r => {
     const failed = isFailed(r), p = pctOf(r)
@@ -193,11 +208,9 @@ function render(data, columns, viewRows) {
 
   const counts = [clockText(now), `${running.length} actif${running.length > 1 ? 's' : ''}`,
     `${ended.length - failedCount} fini${ended.length - failedCount > 1 ? 's' : ''}`, failedCount > 0 ? `${failedCount} en échec` : undefined].filter(Boolean).join(' · ')
-  const orch = latestRunning(undefined)
   const stageText = data.stage ? `▶ ${data.stage.text}` : undefined
   const stageAge = data.stage ? ` ${durationText(now - data.stage.at)}` : ''
   room -= 3 + (stageText === undefined ? 1 : Math.ceil((stageText.length + stageAge.length) / inner))
-  if (orch) room -= shellHeight(orch)
 
   // Header frame (round border, claude colour, paddingX 1).
   const frame = []
@@ -212,7 +225,6 @@ function render(data, columns, viewRows) {
         : [seg(piece.slice(0, split), { b: true, c: 'claude' }), seg(piece.slice(split), { d: true })])
     }
   }
-  if (orch) frame.push(...shellLines(orch, '', true, inner))
   const bc = { c: 'claude' }
   out.push([seg('╭' + '─'.repeat(inner + 2) + '╮', bc)])
   for (const l of frame) {
@@ -223,9 +235,10 @@ function render(data, columns, viewRows) {
 
   const shownCards = []
   if (running.length > 0) room -= 2
-  for (const r of running) { const h = cardHeight(r); if (h > room && shownCards.length > 0) break; shownCards.push(r); room -= h }
-  const lastShell = runningShells.length === 0 ? shellRows[0] : undefined
-  if (lastShell) room -= 2 + shellHeight(lastShell)
+  for (const r of running) { const h = 2; if (h > room && shownCards.length > 0) break; shownCards.push(r); room -= h }
+  const shownShells = isOpen ? [...runningShells, ...endedShells].slice(0, 3) : []
+  const hasShells = shellRows.length > 0
+  if (hasShells) room -= 2 + (isOpen ? shownShells.reduce((n, s) => n + shellHeight(s), 0) : 1)
   const endedRoom = Math.max(1, room - 2)
   const shownEnded = ended.length > endedRoom ? ended.slice(0, Math.max(1, endedRoom - 1)) : ended
 
@@ -233,7 +246,7 @@ function render(data, columns, viewRows) {
   if (running.length > 0) section('EN COURS', running.length, 'cyan')
   shownCards.forEach(card)
   if (shownCards.length < running.length) out.push([seg(`… ${running.length - shownCards.length} autre(s) en cours`, { d: true })])
-  if (lastShell) { section('DERNIÈRE COMMANDE', undefined, 'yellow'); out.push(...shellLines(lastShell, '', true)) }
+  if (hasShells) { commandsHead(); if (!isOpen) commandsLine(); shownShells.forEach(s => out.push(...shellLines(s))) }
   if (ended.length > 0) section('TERMINÉS', ended.length, 'green')
   shownEnded.forEach(endedLine)
   if (shownEnded.length < ended.length) out.push([seg(`… ${ended.length - shownEnded.length} de plus`, { d: true })])
@@ -246,13 +259,13 @@ const $ = id => document.getElementById(id)
 function paint() {
   const cols = +$('cols').value, rows = +$('rows').value
   $('colsOut').textContent = cols; $('rowsOut').textContent = rows
-  const lines = render(SCENARIOS[$('scenario').value](), cols, rows)
+  const lines = render(SCENARIOS[$('scenario').value](), cols, rows, $('open').checked)
   $('term').innerHTML = lines.map(l => l.map(s => {
     const cls = [s.b && 'b', s.d && 'd', s.c && `c-${s.c}`].filter(Boolean).join(' ')
     return cls ? `<span class="${cls}">${esc(s.t)}</span>` : esc(s.t)
   }).join('')).join('\n')
 }
-for (const id of ['scenario', 'cols', 'rows']) $(id).addEventListener('input', paint)
+for (const id of ['scenario', 'open', 'cols', 'rows']) $(id).addEventListener('input', paint)
 paint()
 </script>
 </body>
