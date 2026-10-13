@@ -68,7 +68,7 @@ Title: the finding or the outcome, concrete, with numbers when there are some
 ```markdown
 ## Contexte
 D'où ça vient : ticket/épic d'origine, date, constat chiffré ou capture.
-Créé par : @<login>, le <date> : à contacter si quelque chose n'est pas clair.
+Créé par : @<login>, le <date>.
 
 ## Ce qu'on veut
 Le résultat attendu, en une ou deux phrases. Les décisions déjà prises.
@@ -105,7 +105,7 @@ uploads, secrets or payments, add the `sécurité` label and a box
 ```markdown
 ## Pourquoi cet épic
 Le problème et le chiffre (ou le résultat utilisateur) qui dira qu'il est atteint.
-Créé par : @<login>, le <date> : à contacter si quelque chose n'est pas clair.
+Créé par : @<login>, le <date>.
 
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
