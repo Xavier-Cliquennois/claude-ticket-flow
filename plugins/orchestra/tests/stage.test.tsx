@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-const PANE = { plugin: 'orchestra', component: 'Pane', requestId: 'orchestra', props: {}, viewport: { columns: 80, rows: 30 } } as const
+const PANE = { plugin: 'orchestra', component: 'Pane', requestId: 'orchestra', props: { bodyColumns: 76, scroll: { offset: 0, bodyRows: 28 } }, viewport: { columns: 80, rows: 30 } } as const
 
 test('the stage tool shows its text in the pane', async ($, on) => {
   mock.clock(on, { now: Date.UTC(2026, 9, 9, 12, 0) })

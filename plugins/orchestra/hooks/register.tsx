@@ -414,10 +414,11 @@ export const register: Register = on => {
     const endedShells = shellRows
       .filter(row => row.endedAt !== undefined)
       .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
-    // Room inside the pane, then inside the header frame (border and padding).
-    const width = Math.max(30, (e.viewport?.columns ?? 60) - 4)
+    // Room inside the pane's body (the viewport is wider while the pane is
+    // docked beside the transcript), then inside the header frame.
+    const width = Math.max(30, e.props.bodyColumns)
     const inner = width - 4
-    let room = Math.max(8, (e.viewport?.rows ?? 24) - 2)
+    let room = Math.max(8, e.props.scroll.bodyRows)
 
     const percentOf = (row: AgentRow): number | undefined =>
       row.contextTokens === undefined ? undefined : Math.round((100 * row.contextTokens) / windowTokens)
@@ -476,9 +477,11 @@ export const register: Register = on => {
       const head = count === undefined ? label : `${label} · ${count}`
       return (
         <Box flexDirection="row" marginTop={1}>
-          <Text bold color={color}>
-            {head}{' '}
-          </Text>
+          <Box flexShrink={0}>
+            <Text bold color={color}>
+              {head}{' '}
+            </Text>
+          </Box>
           {rule(head)}
         </Box>
       )
@@ -518,23 +521,33 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column">
           <Box flexDirection="row">
-            <Text color="cyan" bold>
-              ● {name}
-            </Text>
-            <Text bold>
-              {' '}
-              {cut(task, taskRoom).padEnd(taskRoom)}
-            </Text>
-            <Text color="cyan"> {elapsed}</Text>
+            <Box flexShrink={0}>
+              <Text color="cyan" bold>
+                ● {name}
+              </Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1}>
+              <Text bold wrap="truncate-end">
+                {' '}
+                {cut(task, taskRoom)}
+              </Text>
+            </Box>
+            <Box flexShrink={0}>
+              <Text color="cyan"> {elapsed}</Text>
+            </Box>
           </Box>
           <Box flexDirection="row">
-            <Text dimColor>{'  ctx '}</Text>
-            {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
+            <Box flexDirection="row" flexShrink={0}>
+              <Text dimColor>{'  ctx '}</Text>
+              {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
+            </Box>
             {detail !== '' && (
-              <Text dimColor={shell === undefined} color={shell === undefined ? undefined : 'yellow'} wrap="truncate-end">
-                {' · '}
-                {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}
-              </Text>
+              <Box flexShrink={1}>
+                <Text dimColor={shell === undefined} color={shell === undefined ? undefined : 'yellow'} wrap="truncate-end">
+                  {' · '}
+                  {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}
+                </Text>
+              </Box>
             )}
           </Box>
         </Box>
@@ -553,14 +566,22 @@ export const register: Register = on => {
       const taskRoom = Math.max(4, width - nameWidth - meta.length - 6 - status.length - 3)
       return (
         <Box flexDirection="row">
-          <Text color={failed ? 'red' : 'green'}>{failed ? '✗' : '✓'} </Text>
-          <Text bold={failed}>{cut(nameOf(row.label), nameWidth).padEnd(nameWidth)} </Text>
-          <Text dimColor>{cut(taskOf(row.label), taskRoom).padEnd(taskRoom)}</Text>
-          {status !== '' && <Text color="red">{status}</Text>}
-          <Text dimColor>{meta}</Text>
-          <Text color={pct !== undefined && pct >= 30 ? ctxColor(pct) : undefined} dimColor={pct === undefined || pct < 30}>
-            {pctText}
-          </Text>
+          <Box flexShrink={0}>
+            <Text color={failed ? 'red' : 'green'}>{failed ? '✗' : '✓'} </Text>
+            <Text bold={failed}>{cut(nameOf(row.label), nameWidth).padEnd(nameWidth)} </Text>
+          </Box>
+          <Box flexGrow={1} flexShrink={1}>
+            <Text dimColor wrap="truncate-end">
+              {cut(taskOf(row.label), taskRoom)}
+            </Text>
+          </Box>
+          <Box flexShrink={0}>
+            {status !== '' && <Text color="red">{status}</Text>}
+            <Text dimColor>{meta}</Text>
+            <Text color={pct !== undefined && pct >= 30 ? ctxColor(pct) : undefined} dimColor={pct === undefined || pct < 30}>
+              {pctText}
+            </Text>
+          </Box>
         </Box>
       )
     }
@@ -573,11 +594,13 @@ export const register: Register = on => {
       const head = `${isOpen ? '▾' : '▸'} COMMANDES${runningShells.length > 0 ? ` · ${runningShells.length} en cours` : ''}`
       return (
         <Box flexDirection="row" marginTop={1}>
-          <Button key="commands" label={head} plain hotkey="c" onPress={toggle}>
-            <Text bold color="yellow">
-              {head}
-            </Text>
-          </Button>
+          <Box flexShrink={0}>
+            <Button key="commands" label={head} plain hotkey="c" onPress={toggle}>
+              <Text bold color="yellow">
+                {head}
+              </Text>
+            </Button>
+          </Box>
           <Text> </Text>
           {rule(head)}
         </Box>
@@ -634,10 +657,12 @@ export const register: Register = on => {
       <Box flexDirection="column">
         <Box flexDirection="column" borderStyle="round" borderColor="claude" paddingX={1}>
           <Box flexDirection="row" justifyContent="space-between">
-            <Text bold color="claude">
+            <Text bold color="claude" wrap="truncate-end">
               ORCHESTRA
             </Text>
-            <Text bold>{counts}</Text>
+            <Box flexShrink={0}>
+              <Text bold>{counts}</Text>
+            </Box>
           </Box>
           {stageText === undefined ? (
             <Text dimColor>Aucune étape publiée.</Text>

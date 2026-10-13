@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-const PANE = { plugin: 'orchestra', component: 'Pane', requestId: 'orchestra', props: {}, viewport: { columns: 100, rows: 40 } } as const
+const PANE = { plugin: 'orchestra', component: 'Pane', requestId: 'orchestra', props: { bodyColumns: 96, scroll: { offset: 0, bodyRows: 38 } }, viewport: { columns: 100, rows: 40 } } as const
 
 for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
   test(`the pane draws on the ${surface} surface`, async ($, on) => {
