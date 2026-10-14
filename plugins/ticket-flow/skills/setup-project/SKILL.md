@@ -35,6 +35,10 @@ Run these and keep the answers:
   `.claude/skills/`, `.claude/settings.json` hooks, `.github/workflows/`.
 - Stack detection: `package.json` scripts, `pyproject.toml`, `pyrightconfig.json`,
   `Makefile`, test folders. Derive the real verify commands from them, never invent.
+- Compiled stack (`Cargo.toml`, `CMakeLists.txt`, `Makefile` building C/C++):
+  is `sccache` / `ccache` installed (`command -v`), and does `~/.cargo/config.toml`
+  already set a `rustc-wrapper` or `build.target-dir`, or `CARGO_TARGET_DIR` /
+  `RUSTC_WRAPPER` exist in the environment? Read only, change nothing.
 - Is there a web UI to test in a browser (Next.js, Vite, a `viz/` page...)?
 - Memory dir for this project (`~/.claude/projects/<slug>/memory/MEMORY.md`), if any:
   notes about workflow there are facts to carry into CLAUDE.md.
@@ -63,6 +67,22 @@ only what you could not infer:
   server, a database, a tunnel they keep running): ask for them explicitly, even
   if the answer is « none ». Agents give their own test servers a separate port
   and stop only processes they started.
+- Compiled project (Rust, C/C++): offer a compiler cache shared by all agent
+  worktrees, so a new worktree reuses the dependencies another one already
+  built instead of recompiling them (minutes of CPU and gigabytes of disk per
+  agent). Show what you would do and apply nothing without a yes: Rust →
+  install `sccache` if missing (`brew install sccache` or `cargo install
+  sccache --locked`) and add `[build]` `rustc-wrapper = "sccache"` to
+  `~/.cargo/config.toml` (a user-level file shared by every project: show the
+  exact lines first, append rather than overwrite, never replace a wrapper or
+  `target-dir` already set); C/C++ → install `ccache` and use it as compiler
+  launcher (`-DCMAKE_C_COMPILER_LAUNCHER=ccache`, `-DCMAKE_CXX_COMPILER_LAUNCHER=ccache`,
+  or `ccache` symlinks), per project. Do **not** propose a shared target dir
+  (`CARGO_TARGET_DIR`): cargo locks it, so agents would run one at a time.
+  Say what the cache does not cover: the workspace's own crates (incremental
+  compilation is not cached by sccache) are still built per worktree, so the
+  first build of a new worktree is faster but not instant. If declined, or
+  if the tool is already set up, record it and move on.
 - Domain labels specific to this project, if the user wants some.
 
 ## 3. Create what was approved
@@ -99,6 +119,11 @@ plugin's and say so. Check it with a dry run on any issue already on the board
 it reads the card from the issue (about 1 GraphQL point whatever the board size)
 and changes nothing. It is committed with CLAUDE.md, never run without `--dry-run`
 here.
+
+A build cache (previous section's question) is installed or configured only
+after its own yes, in this run, after showing the exact command or lines. It
+touches the user's machine, not the repository: never in silence, never
+repeated if already in place, and not written into CLAUDE.md as a rule.
 
 ## 4. Write or upgrade CLAUDE.md
 

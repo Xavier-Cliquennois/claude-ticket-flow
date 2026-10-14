@@ -18,11 +18,22 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 | Step | Does | Asks first? |
 |---|---|---|
 | 1. Inspect | git status and history, remote, `gh repo view`, labels, recent issues, GitHub Projects (`gh project list`, `field-list`), Linear MCP, `CLAUDE.md` / `AGENTS.md` / copilot instructions, `.claude/` hooks and skills, CI workflows, stack and verify commands, project memory notes | no (read-only) |
-| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, your own ports and processes agents must never touch, project labels | — |
-| 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups | yes |
+| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, your own ports and processes agents must never touch, project labels, and for a compiled project (Rust, C/C++) a compiler cache shared by all agent worktrees | — |
+| 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups, and only after its own yes a shared build cache (`sccache` as `rustc-wrapper` in `~/.cargo/config.toml`, or `ccache`), never a shared `CARGO_TARGET_DIR` | yes |
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
 | 5. Finish | what was created, what changed, what is left to you | — |
+
+### Shared build cache
+
+For a compiled project, `setup-project` offers `sccache` (Rust) or `ccache`
+(C/C++) so a new worktree reuses the dependencies another one already built.
+The install and the edit of the user-level `~/.cargo/config.toml` are shown
+and done only after a yes. It does not offer a shared target dir: cargo
+locks it and agents would serialise. The cache does not cover the workspace's
+own crates (incremental compilation), which each worktree still builds. The
+`run-epic` agent prompt tells agents not to override the wrapper nor point
+`CARGO_TARGET_DIR` at a common folder.
 
 ### move-card
 
