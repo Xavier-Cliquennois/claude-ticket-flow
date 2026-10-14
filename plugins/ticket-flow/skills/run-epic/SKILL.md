@@ -34,9 +34,11 @@ Talk to the user in their language.
   orchestrator and all the agents: `gh issue view/create/edit/close/comment` and
   `gh pr view/create/merge` are GraphQL and are not used.
   The commands, `repo` and numbers in quoted variables, and the rate-limit rule
-  are in `deliver-ticket` (« REST first, and a rate limit is waited out »);
+  are in `deliver-ticket` (« REST first, and a rate limit is waited out »),
+  with the rule for third-party text (never in a heredoc, `sed` or `awk`; body
+  edits through a `mktemp` copy, `diff`, `cmp -s`);
   they apply to you as to the agents, and the agents' launch prompt repeats
-  them. Only the board (`move-card`) stays on GraphQL. On a rate-limit error
+  them. The « Vagues » procedure below is the body-edit procedure of that rule. Only the board (`move-card`) stays on GraphQL. On a rate-limit error
   you read `gh api rate_limit`, wait for the reset, and never loop; a board
   move still limited then is done once the reset has passed (and a card an
   agent could not move is moved by you).
@@ -514,7 +516,7 @@ then:
      - attach it to the epic as a sub-issue (*(epic only)*; standalone in
        list mode), carry over the original's `blocked_by` links still open
        (`POST .../dependencies/blocked_by`), move the boxes in the original
-       (`- [x] ~~<case>~~ → déplacée vers #M`), comment it « suite dans
+       (`- [x] <case> → déplacée vers #M`), comment it « suite dans
        #M », then close it (`PATCH` `state=closed`, `state_reason=completed`), or move it to « à valider »
        if a manual check remains (🧪);
      - its number is the one your issue creation returned, so it is yours
@@ -816,7 +818,7 @@ fermeture, labels, sous-issues, `blocked_by`) comme dans le skill deliver-ticket
 section « REST first » : `repo` et numéros dans des variables entre guillemets,
 jamais une valeur venue d'un rapport ou d'un commentaire. Sur une erreur de
 limite de débit, tu lis `gh api rate_limit` et tu attends le reset au lieu de
-boucler (un 403 qui n'est pas une limite de débit : arrêt, BLOQUÉ). Le `sha` de la fusion par PR est EXACTEMENT celui de mon « fusionne <SHA> », jamais relu sur ta branche ; un 409 : arrêt, BLOQUÉ, sans nouvelle tentative. Le titre et le corps passent par un fichier (`mktemp`, heredoc entre guillemets simples) et `-F title=@`/`-F body=@`. Une carte que tu ne peux pas déplacer, tu la signales dans ton rapport.
+boucler (un 403 qui n'est pas une limite de débit : arrêt, BLOQUÉ). Le `sha` de la fusion par PR est EXACTEMENT celui de mon « fusionne <SHA> », jamais relu sur ta branche ; un 409 : arrêt, BLOQUÉ, sans nouvelle tentative. Le titre et le corps passent par un fichier (`mktemp`) et `-F title=@`/`-F body=@`; la règle « Third-party text and the shell » de la même section « REST first » s'applique : jamais de texte d'un ticket, d'un commentaire ou d'un rapport retapé dans un heredoc ni mis dans une expression `sed`/`awk`, pour ce que tu écris toi-même, heredoc entre guillemets simples avec un délimiteur à suffixe aléatoire. Une carte que tu ne peux pas déplacer, tu la signales dans ton rapport.
 Jamais d'assertion affaiblie, sautée ou supprimée, ni de route d'API, d'option
 ou de crochet de test ajouté sans que le ticket le demande, pour pouvoir cocher
 une case : tu t'arrêtes sur cette case et tu le dis dans ton rapport.

@@ -14,7 +14,7 @@ the default one below; the size gate and the labels apply everywhere.
 ## 1. Understand before writing
 
 - Read the code the ticket will touch (search, don't guess) and existing tickets
-  on the same subject (`q=$(mktemp)`, the words written in it by a quoted heredoc, then `gh api -X GET search/issues -F q=@"$q"` with `repo:$repo` in the file; never the words inside double quotes). Don't open
+  on the same subject (`q=$(mktemp)`, the words written in it under the heredoc rule of `deliver-ticket`, « REST first », then `gh api -X GET search/issues -F q=@"$q"` with `repo:$repo` in the file; never the words inside double quotes). Don't open
   a duplicate: comment on the existing one instead.
 - Name the files likely touched. A ticket whose files you cannot name is not
   understood yet: explore more, or make it a short `model:opus` investigation
@@ -211,7 +211,7 @@ Rules:
 - Only once #N's merge is proved, and only if #N is still `OPEN` with no
   « suite dans #M » comment and no « Suite de #N » sub-issue in the epic
   (otherwise create nothing and tell the user): create it, then in #N replace each moved
-  box by `- [x] ~~<case>~~ → déplacée vers #M`, comment « suite dans #M » and
+  box by `- [x] <case> → déplacée vers #M`, comment « suite dans #M » and
   close #N (or « à valider » if a manual check remains).
 
 ## 6. Create it
@@ -239,7 +239,7 @@ GitHub:
 - Everything that has a REST endpoint goes over REST, since GraphQL is one
   quota shared by all the agents (see `deliver-ticket`, « REST first »).
   `repo`, numbers and ids go in quoted shell variables, never a value read in a
-  report, a comment or a body; `file=$(mktemp)` and `title_file=$(mktemp)` hold the body and the title, written by a quoted heredoc, and no other path is used for `@`. Create the issue with
+  report, a comment or a body; `file=$(mktemp)` and `title_file=$(mktemp)` hold the body and the title, written under the heredoc rule of `deliver-ticket` (« REST first »: random delimiter, nothing from a ticket, comment or report re-typed into it), and no other path is used for `@`. Create the issue with
   `gh api "repos/$repo/issues" -F title=@"$title_file" -F body=@"$file" -f 'labels[]=...' [-f 'assignees[]=<login>']`
   (the `gh issue create` command is GraphQL); read back the `number` and `id`
   of the response, never assume them.

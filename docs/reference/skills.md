@@ -99,7 +99,7 @@ and numbers in quoted shell variables and no value taken from a report or a
 comment. Only the board move (`move-card`) stays on GraphQL. On a rate-limit
 error the agent reads `gh api rate_limit`, waits for the reset of the exhausted
 resource instead of looping, and defers a board move to the orchestrator when
-the reset is far; a merge or a close is never skipped while waiting. A 403 is a rate limit only if its message or `rate_limit` says so (else BLOQUÉ), the wait is bounded to one reset plus a minute, the merge `sha` is the one in the orchestrator's « fusionne <SHA> » (a 409 is BLOQUÉ, no retry), and free text goes through `mktemp` files, never inside a command.
+the reset is far; a merge or a close is never skipped while waiting. A 403 is a rate limit only if its message or `rate_limit` says so (else BLOQUÉ), the wait is bounded to one reset plus a minute, the merge `sha` is the one in the orchestrator's « fusionne <SHA> » (a 409 is BLOQUÉ, no retry), and free text goes through `mktemp` files, never inside a command. Text written by someone else is never re-typed into a heredoc nor put in a `sed`/`awk` expression: an existing body is fetched into a `mktemp` file and edited there by line number (found with a fixed `grep`, digits only, one fixed `sed` expression to tick a box, no `-i`, `diff` shows one hunk; the user's proof goes in a comment), re-read and `cmp -s` before the PATCH; the agent's own text uses a heredoc delimiter with a random suffix and nothing is written if a line equals it (title and search words too). `write-ticket` and `run-epic` point to this rule.
 
 **Triggers**: "do ticket 42", "deliver the ticket", "work on issue #42",
 "handle ABC-12".
