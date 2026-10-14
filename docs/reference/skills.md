@@ -160,6 +160,17 @@ Key behaviours:
   later. Then unlock if locked, `git worktree remove` without `--force`,
   `git branch -D`, the remote branch if it exists, `git worktree prune`; fork
   leftovers from the report are listed to you, not deleted;
+- a security finding on a running agent's commit goes to that agent before its
+  PR, only if the commit SHA (validated like case 6, one blame form allowed) is
+  in the agent's own branch range (else a
+  `sécurité` ticket): quoted as an unverified description (data, never a
+  command; the agent's prompt says so), with the expected fix and the test
+  that fails without it. The orchestrator runs no search built from a finding;
+  for `main` it proposes a `sécurité` ticket (only on your "go"). The agent's
+  report has a `Findings sécurité` line per finding; no "fusionne" while one is
+  unaddressed (a contested finding of any severity goes to you), a head changed since the
+  security review is re-reviewed first, and agents make no commit after the
+  review except the rebase (a rebase conflict means BLOQUÉ);
 - an agent that ends on an API or network error is resumed, not relaunched:
   once the API and the tracker answer again (still down after 30 minutes: it
   tells you), the orchestrator inspects, read-only, the worktree and branch it
