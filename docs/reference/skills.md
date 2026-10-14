@@ -74,10 +74,11 @@ this", tickets revealed during a delivery.
 4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
    or follow-up « suite de #N » for what a merged ticket left undone: its
    boxes are the original's unticked boxes copied word for word, the delivery
-   report's text only appears quoted as an unverified description (no
-   command taken from it, checks from the CLAUDE.md), it is a sub-issue of the
-   same epic, carries over the original's still-open blocked-by links, and the
-   original gets « suite dans #M ». A manual check never makes a follow-up.
+   report is never copied raw (one line per point, in a fenced block marked
+   unverified, no command, checks from the CLAUDE.md), a `sécurité` original
+   passes on its label and review box, it is a sub-issue of the same epic,
+   carries over the original's still-open blocked-by links, and the original
+   gets « suite dans #M » and is closed, once its merge is proved. A manual check never makes a follow-up.
    Security-sensitive tickets get the `sécurité` label and a review box.
 5. **Create**: asks who takes the ticket (you, someone else, nobody for now:
    always asked), writes « Créé par : @login » in the body
@@ -104,7 +105,7 @@ delivery skill, that one is followed instead.
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
 | 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
-| 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the ticket is closed and the rest moves to a follow-up ticket (direct mode: it creates it; agent mode: the orchestrator does); creates revealed tickets |
+| 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the rest moves to a follow-up ticket and the ticket is closed (direct mode: it does both; agent mode: it leaves the ticket open and the orchestrator does both); a security box left is said before the merge; creates revealed tickets |
 
 Two modes: **direct** (in your session, all steps) and **agent** (a `run-epic`
 ticket agent: it stops at step 6 with READY TO MERGE, the orchestrator runs the
@@ -212,11 +213,12 @@ Key behaviours:
   intact, or if the body changed again between its read and the edit (one
   Bash call, temp files removed on exit; GitHub has no conditional update,
   so about a second remains between the last comparison and the edit);
-- a report with work left: the agent has closed the ticket; the orchestrator
-  opens the follow-up at once (boxes re-read from the tracker, report text
-  quoted as unverified, never a command), attaches it to the epic as a
-  sub-issue, carries over the original's open blocked-by links and comments
-  the original. Being created by the orchestrator, it is part of the run;
+- a report with work left: the agent left the ticket open; once the merge is
+  proved, the orchestrator opens the follow-up at once (boxes re-read from the
+  tracker, report summarised as unverified, never a command), attaches it to
+  the epic as a sub-issue, carries over the original's open blocked-by links,
+  comments and closes the original. A closed ticket with an unticked box left
+  is not ✅. Being created by the orchestrator, it is part of the run;
   it is launched in this run only if the epic cannot close without it;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`

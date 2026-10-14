@@ -108,11 +108,11 @@ its code is merged. When you have done the check, say so (« j'ai testé #380,
 c'est bon »): `deliver-ticket` ticks the box, closes the ticket, and the node
 turns ✅. A resumed run re-reads every state from the tracker first.
 
-A merged ticket with code or tests left is not kept open: the agent closes it
-and lists each leftover point (what, why not now, what it would take); the
-orchestrator creates the follow-up ticket with the remaining boxes, attaches it
-to the epic, carries over the original's open blocked-by links, comments the
-original, and adds the follow-up to the epic's table and graph, like any ticket
+A merged ticket with code or tests left is not kept open: the agent lists each
+leftover point (what, why not now, what it would take) and leaves the ticket
+to the orchestrator, which checks the merge, creates the follow-up ticket with
+the remaining boxes, attaches it to the epic, carries over the original's open
+blocked-by links, comments and closes the original, and adds the follow-up to the epic's table and graph, like any ticket
 revealed during the run (in a wave not started yet when it fits, otherwise a
 new row). Only a manual check keeps a merged ticket open (🧪).
 

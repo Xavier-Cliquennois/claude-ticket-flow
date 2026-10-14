@@ -74,6 +74,8 @@ plain list of tickets), not this skill.
   ticket, a missing decision), stop on that box and say it: it stays unticked
   and goes to « reste » in the report (step 8, outcome 3), or the delivery
   becomes « BLOQUÉ » if the rest of the ticket makes no sense without it.
+  A security box (`sécurité` ticket, review box) that cannot be done is said
+  in the report before the merge, never discovered after it.
 - Keep your context light: read excerpts, not whole files; never print long
   outputs (`tail`, `grep`). If the ticket turns out bigger than its size, stop
   cleanly and propose a split rather than pushing through.
@@ -176,11 +178,13 @@ shows it live:
        this ticket replace each moved box by
        `- [x] ~~<case>~~ → déplacée vers #M`, comment « suite dans #M », then
        apply outcome 1 or 2 to what remains.
-     - Agent mode: leave the leftover boxes unticked, close the ticket
-       yourself (or « à valider » if a manual check remains too, outcome 2),
+     - Agent mode: leave the leftover boxes unticked and the ticket open,
        and list each leftover point under « reste » in the report, with its
-       three lines. The orchestrator creates the follow-up, moves the boxes
-       and comments this ticket; you create no ticket.
+       three lines. The orchestrator checks the merge, creates the follow-up,
+       moves the boxes, comments this ticket and closes it (or « à valider »
+       if a manual check remains); you create and close no ticket. A
+       security box that goes to « reste » is already named in your
+       « PRÊT À FUSIONNER » report.
 - Later, when someone reports the check done (« j'ai testé #N, c'est bon »):
   tick the box with their words as proof, comment, close, board → « fini »,
   epic node → ✅. A failed check is a bug on the ticket: say what failed in a
