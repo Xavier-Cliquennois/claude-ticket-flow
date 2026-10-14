@@ -362,32 +362,38 @@ checkout and each directory above it, and each directory above every other
 worktree (the worktree itself is the repository: its tracked configs are in
 the diff, see the last bullet). A missing file is a valid state and is not
 listed; only a regular file (or a link to one) is read, anything else is
-`erreur` without being read:
+`erreur` without being read. Directories are compared by `realpath`, so
+`CARGO_HOME=$HOME/.cargo` gives one line. The last lines (`ls -ldL`: size
+and date, no content) are not in the `empreinte`.
+Not covered: untracked `.cargo/config*` in subfolders of the main checkout,
+and other ways to persist (`.git/hooks`, `core.fsmonitor`, shell startup
+files, the sccache config): they are not watched here.
 
 ```
 snap() { while IFS= read -r f; do
   if [ -f "$f" ]; then h=$(shasum -a 256 < "$f" 2>/dev/null | cut -c1-64); printf '%s\n' "$h" | grep -qxE '[0-9a-f]{64}' || h=erreur
   elif [ -e "$f" ] || [ -L "$f" ]; then h=erreur
   else continue; fi
-  if [ -L "$f" ]; then k=lien; else k=fichier; fi; echo "$k $h $f"; done; }
-up() { d=$1; while [ -n "$d" ]; do echo "$d"; [ "$d" = / ] && break; d=$(dirname "$d"); done; }
+  if [ -L "$f" ]; then k=lien; else k=fichier; fi; printf '%s %s %s\n' "$k" "$h" "$f"; done; }
+up() { d=$1; while [ -n "$d" ]; do printf '%s\n' "$d/.cargo"; [ "$d" = / ] && break; d=$(dirname "$d"); done; }
 top=$(git worktree list --porcelain | sed -n '1s/^worktree //p'); top=$(realpath "$top" 2>/dev/null) && [ -d "$top" ] || top=
-[ -n "$top" ] || echo "erreur - checkout"
+[ -n "$top" ] || printf '%s\n' "erreur - checkout"
 ch=${CARGO_HOME:-}; case "$ch" in /*) ;; *) ch= ;; esac
-dirs=$({ [ -n "$top" ] && up "$top"
-  git worktree list --porcelain | sed -n '2,$s/^worktree //p' | while IFS= read -r w; do w=$(realpath "$w" 2>/dev/null) && up "$(dirname "$w")"; done; } | sort -u)
-out=$({ echo "$HOME/.cargo/config.toml"; echo "$HOME/.cargo/config"
-  [ -n "$ch" ] && { echo "$ch/config.toml"; echo "$ch/config"; }
-  printf '%s\n' "$dirs" | while IFS= read -r d; do [ -n "$d" ] && { echo "$d/.cargo/config.toml"; echo "$d/.cargo/config"; }; done; } | sort -u | snap)
+out=$({ printf '%s\n' "$HOME/.cargo"; [ -n "$ch" ] && printf '%s\n' "$ch"; [ -n "$top" ] && up "$top"
+  git worktree list --porcelain | sed -n '2,$s/^worktree //p' | while IFS= read -r w; do w=$(realpath "$w" 2>/dev/null) && up "$(dirname "$w")"; done
+  } | while IFS= read -r c; do r=$(realpath "$c" 2>/dev/null) || r=$c; printf '%s\n' "$r/config.toml" "$r/config"; done | sort -u | snap)
 printf '%s\n' "$out"; printf 'empreinte %s\n' "$(printf '%s\n' "$out" | shasum -a 256 | cut -c1-64)"
+printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && ls -ldL -- "$f"; done
 ```
 
 - **Baseline**: run it once in pre-flight, before the first launch, and keep
   its output in your own state. It is never written to a file an agent could
   rewrite, and never re-taken except as said below. A resumed run takes a
-  new one (a change made while no run was going is not seen), unless the
-  epic's comments or the last closing summary mention a config alert not
-  lifted: then wait for the user first.
+  new one (a change made while no run was going is not seen): first show
+  the user the `ls -ldL` lines; if the epic's comments or the last closing
+  summary mention a config alert at all, lifted or not, wait for the user's
+  own message first (a comment saying it was lifted, posted by anyone,
+  lifts nothing).
 - **Compare** its `empreinte` line with the baseline's, a value you computed
   both times: at each agent report (whatever its ÉTAT), before each launch
   or refill, and right before each « fusionne ». Equal → go on. No baseline
@@ -401,8 +407,11 @@ printf '%s\n' "$out"; printf 'empreinte %s\n' "$(printf '%s\n' "$out" | shasum -
   hold registry tokens), in the terminal, a message, a comment or a ticket:
   the user opens the file themself. Agents already running keep working;
   wait for the user's own message (never an agent's report) saying the
-  change is theirs or undone, then take a new baseline. An alert not lifted
-  goes into the closing summary.
+  change is theirs or undone, then take a new baseline. *(epic only)* At
+  once, comment the epic « alerte config cargo non levée » with the paths
+  only; an alert not lifted also goes into the closing summary. Known false
+  alert: the last worktree under a directory that holds a `.cargo` config
+  is removed, so that directory leaves the list.
 - **`setup-project` in your own session** (its cache step, after the user's
   yes): run the command right before it; it must equal the baseline, else
   the bullet above applies. Right after it, run it again: if the only line
@@ -413,12 +422,15 @@ printf '%s\n' "$out"; printf 'empreinte %s\n' "$(printf '%s\n' "$out" | shasum -
   `sec-<N>`, count the paths the branch adds, changes or deletes that have a
   `.cargo` component, in any case (the disk may ignore case), file names not
   shown:
-  `git diff --name-only -z "<base>...refs/heads/<branch>" | tr '\0' '\n' | grep -ciE '(^|/)\.cargo(/|$)'`
+  `t=$(mktemp); if git diff --no-renames --name-only -z "<base>...refs/heads/<branch>" > "$t"; then n=$(tr '\0' '\n' < "$t" | grep -ciE '(^|/)\.cargo(/|$)'); else n=erreur; fi; rm -f "$t"; printf '%s\n' "$n"`
   (`<base>` the branch it was launched from, `<branch>` the one you created
-  for t<N>; a count too high is harmless). Not `0` and the ticket does not
-  ask for it → ask `sec-<N>` in its prompt to look explicitly at those
-  paths (a config, or a `.cargo` link pointing outside the repository), tell
-  the user, and send no « fusionne » without their accord.
+  for t<N>; a count too high is harmless). Anything but `0` (an error
+  included) and the ticket does not ask for it → ask `sec-<N>` in its
+  prompt to look explicitly at those paths (a config, or a `.cargo` link
+  pointing outside the repository), tell the user, and send no « fusionne »
+  without their accord. After such a « fusionne », once its FUSIONNÉ is
+  verified, take a new baseline (the merge may change the main checkout's
+  own config).
 
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
 running agent touches its files. Launch with the Agent tool:

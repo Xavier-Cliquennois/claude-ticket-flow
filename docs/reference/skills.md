@@ -160,13 +160,20 @@ Key behaviours:
   and compared at each agent report, before each launch and before each
   "fusionne". A change, an error, or a check that cannot run holds every
   launch and merge until you say the change is yours or undone; you are told
-  which paths changed, never their content (it may hold registry tokens). A
+  which paths changed, never their content (it may hold registry tokens),
+  and the epic gets a comment with the paths only. A
   `setup-project` cache step in the same session is accepted only if the
   snapshot matched just before it and only `~/.cargo/config.toml` changed. A
-  resumed run with an alert not lifted waits for you before a new snapshot. A
-  branch that touches any `.cargo` path inside the repository (any case),
-  when the ticket does not ask for it, is flagged to the security review and
-  to you, and not merged without your accord;
+  resumed run shows you the files' sizes and dates, and any alert mentioned
+  in the epic (lifted or not) waits for your own word before a new snapshot.
+  A branch that touches any `.cargo` path inside the repository (any case,
+  renames included), when the ticket does not ask for it, is flagged to the
+  security review and to you, and not merged without your accord; the
+  snapshot is re-taken after that merge. Not watched: untracked
+  `.cargo/config*` in subfolders of the main checkout, `.git/hooks`,
+  `core.fsmonitor`, shell startup files, the sccache config. Known false
+  alert: removing the last worktree under a directory that holds a `.cargo`
+  config;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
