@@ -152,18 +152,21 @@ Key behaviours:
 - one agent at a time on each exclusive resource;
 - ticket agents stop only the processes they started, by PID (no kill by pattern or port), so parallel test servers never kill each other;
 - watches the cargo config outside the repository, which the security gate
-  does not see: a SHA-256 snapshot of `config.toml` and the legacy `config`
-  under `~/.cargo`, `$CARGO_HOME` and every parent directory of the checkout
-  (a missing file is a valid state), taken in pre-flight by a fixed command,
-  kept only in the orchestrator's own state and compared at each agent
-  report, before each launch and before each "fusionne". A change, or a file
-  that cannot be read, holds every launch and merge until you say the change
-  is yours or undone (only a `setup-project` cache step run in the same
-  session is accepted without asking); you are told which paths changed,
-  never their content (it may hold registry tokens). A branch that adds or
-  changes a `.cargo/config*` inside the repository, when the ticket does not
-  ask for it, is flagged to the security review and to you, and not merged
-  without your accord;
+  does not see: a SHA-256 snapshot of `.cargo/config.toml` and the legacy
+  `config` in `~/.cargo`, `$CARGO_HOME`, the main checkout and every
+  directory above it or above another worktree (a missing file is a valid
+  state; only regular files are read, anything else is an error), taken in
+  pre-flight by a fixed command, kept only in the orchestrator's own state
+  and compared at each agent report, before each launch and before each
+  "fusionne". A change, an error, or a check that cannot run holds every
+  launch and merge until you say the change is yours or undone; you are told
+  which paths changed, never their content (it may hold registry tokens). A
+  `setup-project` cache step in the same session is accepted only if the
+  snapshot matched just before it and only `~/.cargo/config.toml` changed. A
+  resumed run with an alert not lifted waits for you before a new snapshot. A
+  branch that touches any `.cargo` path inside the repository (any case),
+  when the ticket does not ask for it, is flagged to the security review and
+  to you, and not merged without your accord;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
