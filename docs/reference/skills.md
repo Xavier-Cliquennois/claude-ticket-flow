@@ -159,12 +159,16 @@ Key behaviours:
   live;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
-  commit and list it in the report (« Fixes for main »); the orchestrator
-  keeps the list and PROPOSES one small ticket + PR to `main` with a test per
-  fix that fails without it (nothing is pushed nor opened without the user's
-  go); between waves, once the wave is merged, it merges `main` into the
-  integration branch (conflicts on a fix present twice: keep both
-  contributions; anything non-trivial is asked in plain text);
+  commit and list it in the report (« Fixes for main »). The orchestrator only
+  proposes: it reads the fixes in the range each merge added to the target
+  (`fix(` subjects; a report hash is only a hint, checked as a full SHA in that
+  range and an ancestor of the target), and proposes one small ticket with a
+  test per fix that fails without it. A plan « go » or an autonomous run does
+  not cover it; on the user's own « go » the ticket runs as a normal ticket
+  targeting `main` (agent cherry-picks and tests, then security-reviewer gate),
+  so the orchestrator picks, tests, pushes and opens nothing. Between waves,
+  with no merge pending, it merges `main` into the integration branch in its
+  own worktree (any conflict: abort and ask);
 - epic closed only on its own checklist;
 - publishes its stage to `orchestra` when the mod is installed.
 

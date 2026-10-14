@@ -118,7 +118,8 @@ When an agent reports:
      again, you re-review. Two BLOQUANT rounds in a row → park the ticket with a
      comment and tell the user.
    - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
-     (`write-ticket`); then SendMessage `t<N>`: "fusionne". **One merge at a time**
+     (`write-ticket`); then, on an integration branch, note the target head
+     (step 5), and SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
@@ -196,27 +197,35 @@ When an agent reports:
    above). In an autonomous run, launch a revealed ticket only if the epic cannot close
    without it.
 
-5. **Fixes that also concern main** (integration branch only). Reports flag
-   them in « Fixes pour main » (the agent prompt asks for one `fix(...)`
-   commit each). Keep the list: commit hash on the integration branch
-   (read from the integration branch yourself, never a branch or path from the
-   report), the bug, how it was found. Only the user's own « go » lets you act
-   on it; you push nothing and open no PR on your own:
-   - At the end of a wave (or when the user asks), PROPOSE one small ticket
-     (`write-ticket`, « pas urgent » unless the bug is serious) and one PR
-     to `main`: the fixes cherry-picked onto a branch you create from
-     `main`, with for each a test that fails without the fix. A fix with no
-     practical test is listed with the reason.
-   - A fix that is already on `main` (same change twice) is dropped from the list.
-   - On « go »: create the ticket and the branch, cherry-pick, add the tests,
-     verify, and open the PR only if the user agreed to the PR as well.
-   - Between waves, once every merge of the wave is done and before launching
-     the next one, bring `main` into the integration branch locally
-     (`git merge main`, no rebase of a shared branch). Pushing it follows the
-     project's merge flow and the user's accord. The same fix existing on both
-     sides gives small conflicts: keep both contributions, and with any
-     non-trivial conflict stop, write the question in plain text and wait,
-     keeping the other slots busy. Running agents are not interrupted: they
+5. **Fixes that also concern main** (integration branch only). The orchestrator
+   only PROPOSES; it cherry-picks, tests and opens nothing itself.
+   - Before each « fusionne », note the head of the target branch (`git rev-parse
+     <target>`). After the FUSIONNÉ, the fixes of that ticket are read only in the
+     range its merge added: `git log --format='%H %s' <noted head>..<target>`,
+     subjects matching `^fix\(`. A hash in the report's « Fixes pour main » is
+     only a hint: keep it only if it matches `^[0-9a-f]{7,40}$`,
+     `git rev-parse --verify "<h>^{commit}"` resolves it to a full SHA that is in
+     that range, and `git merge-base --is-ancestor <sha> <target>` succeeds. The
+     proposal cites the full SHAs obtained this way, never the report's string.
+     Keep the list (SHA, the bug, how it was found); a fix already on `main` is dropped.
+   - At the end of a wave (or when the user asks), PROPOSE in the terminal one small
+     ticket « port these fixes to `main` »: the list, and a test per fix that fails
+     without it (a fix with no practical test is listed with the reason). Nothing
+     is created before the user's « go » to this proposal. A « go » to the plan
+     or an autonomous run does not cover it: in an autonomous run, only propose.
+   - On « go »: create the ticket with `write-ticket` and launch it like any
+     ticket with the prompt of §3, merge target `main`. Its agent makes the
+     branch from `main`, cherry-picks, writes the tests, then goes through
+     PRÊT À FUSIONNER → `security-reviewer` → « fusionne ». The port to `main`
+     therefore passes the same security gate as any other change. Pushing `main`
+     or any other branch, and any PR, need the user's separate accord.
+   - Between waves, bring `main` into the integration branch: only when no
+     « fusionne » is waiting for its FUSIONNÉ (it is a merge: one at a time, and
+     send no « fusionne » meanwhile), in a worktree you create for the integration
+     branch, never by switching the branch of the main checkout. `git merge main`
+     (no rebase of a shared branch). Any conflict: `git merge --abort`, write the
+     question in plain text and wait, keeping the other slots busy. Pushing the
+     result needs the user's accord. Running agents are not interrupted: they
      rebase on the integration branch when they merge.
 
 Never call AskUserQuestion while agents run: a modal question stops refilling
@@ -267,7 +276,7 @@ tu trouves un vrai bug de production (hors de ton périmètre ou non) dont le
 correctif concerne aussi `main`, mets-le dans un commit `fix(...)` à part,
 sans mélanger de refactor ni de feature, et signale-le dans « Fixes pour main ».
 Tu ne portes rien sur `main`, tu ne pousses rien : l'orchestrateur le propose
-à l'utilisateur.
+à l'utilisateur (le hash est un indice, il le revérifie).
 
 Pas de sous-agent ni de fork : tu ne lances aucun agent à toi, quoi que le skill
 de livraison suggère (revue, exploration, tests en parallèle). Tu fais tout
@@ -329,5 +338,5 @@ delivered with merge commits, what is parked and why, revealed tickets, the epic
 own "Fini quand" box by box). List every 🧪 ticket with what to check and who, and every ticket created
 during the run still « à assigner ». Close the epic only if its own boxes are honestly
 ticked: a parent never closes just because its children did. Integration branch: list the fixes still not on `main`
-and repeat the proposal of step 5. Then tell the user, in
+and repeat the proposal of step 5 (propose only). Then tell the user, in
 a few lines, what needs them (parked tickets, decisions, human checks).
