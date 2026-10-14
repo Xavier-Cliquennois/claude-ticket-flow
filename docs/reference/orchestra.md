@@ -3,7 +3,7 @@
 What the optional `orchestra` mod shows, how the orchestrator feeds it, and its
 limits.
 
-> Up to date as of 2026-10-13 (orchestra 0.4.1). Uses the Claude Code mods
+> Up to date as of 2026-10-14 (orchestra 0.5.0). Uses the Claude Code mods
 > API, which is in early access and may change between releases.
 
 ## What it shows
