@@ -161,6 +161,7 @@ section is older. Upgrading a section brings it to that number.
   en cours=`<option>`, à valider=`<option|—>`, bloqué=`<option>`, fini=`<option>`.
   Champs à remplir : <Phase, ... | aucun>.
 - Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau) ; jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
+- Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé ; seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
 - Labels obligatoires : un type, `model:opus|sonnet`, `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.

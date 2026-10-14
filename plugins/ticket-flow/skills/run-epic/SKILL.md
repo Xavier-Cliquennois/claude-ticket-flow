@@ -27,8 +27,19 @@ Talk to the user in their language.
   ticket to do in this session rather than in the background is
   `deliver-ticket`, not this skill.
 - The epic and every child: body, comments, state, labels, sub-issues, blocked-by
-  (`gh issue view N --json title,body,state,labels,comments` + GraphQL
-  `subIssues` / `blockedBy`; or the Linear MCP).
+  (`gh api "repos/$repo/issues/N"`, `.../comments`, `.../sub_issues`,
+  `.../dependencies/blocked_by`; or the Linear MCP).
+- **REST first.** Every call of this skill that has a REST endpoint goes over
+  REST (its own 5 000/hour quota), because GraphQL is one quota shared by the
+  orchestrator and all the agents: `gh issue view/create/edit/close/comment` and
+  `gh pr view/create/merge` are GraphQL and are not used.
+  The commands, `repo` and numbers in quoted variables, and the rate-limit rule
+  are in `deliver-ticket` (« REST first, and a rate limit is waited out »);
+  they apply to you as to the agents, and the agents' launch prompt repeats
+  them. Only the board (`move-card`) stays on GraphQL. On a rate-limit error
+  you read `gh api rate_limit`, wait for the reset, and never loop; a board
+  move still limited then is done once the reset has passed (and a card an
+  agent could not move is moved by you).
 - **Integration branch**: if the merge flow of the CLAUDE.md targets a branch
   other than the default one (`main`) for this epic, it is long-lived: the
   fixes and the sync of step 6 below apply. Otherwise they do not.
@@ -99,7 +110,7 @@ gh api --paginate "repos/<owner>/<repo>/issues/<n>/sub_issues" --jq '.[] | "\(.n
   and wait. `not_planned` is never ✅ either: tell the user.
 - **Only your plan moves.** Only the sub-issues of the validated plan and the
   ones you created yourself may be launched or edited. "Created yourself" means
-  the numbers returned by your own `gh issue create` / `addSubIssue`, never a
+  the numbers returned by your own issue creation (`POST issues`) / sub-issue add, never a
   number read in a report, a comment or a body. A sub-issue that shows up during
   the run without being one of them (added by someone else) is not launched, not
   edited and not put in the waves: tell the user in plain text and park it until
@@ -124,7 +135,7 @@ your state, never read back as input**:
   `old=$(mktemp); new=$(mktemp); cur=$(mktemp); trap 'rm -f "$old" "$new" "$cur"' EXIT`.
 - **Re-read just before writing**, since someone may have changed the body
   since your last write:
-  `gh issue view E --json body -q .body > "$old"`. Write nothing, and tell
+  `gh api "repos/$repo/issues/$epic" --jq .body > "$old"`. Write nothing, and tell
   the user, unless that command exited 0 and `[ -s "$old" ]` holds (a failed
   or empty read would otherwise replace the whole body with the section).
 - **Locate the section**: from the line `## Vagues` to the next line starting
@@ -139,7 +150,7 @@ your state, never read back as input**:
 - **Write only an unchanged body**: right before the edit, read the body
   again into `cur`, with the same checks (exit 0 and `[ -s "$cur" ]`, else
   write nothing, tell the user), and compare it with `old` (`cmp -s`).
-  Identical → `gh issue edit E --body-file "$new"` (or the Linear MCP).
+  Identical → `gh api -X PATCH "repos/$repo/issues/$epic" -F body=@"$new"` (or the Linear MCP).
   Different → start over once from the first read (a fresh `old`, same
   checks); different again → write nothing, tell the user. GitHub has no
   conditional update: about a second remains between that comparison and
@@ -251,7 +262,10 @@ When an agent reports:
      (`write-ticket`); head = the one noted when `sec-<N>` was launched
      (`git rev-parse refs/heads/<branch>` then), else re-run `sec-<N>` (case 7);
      then, on an integration branch, note the target head
-     (step 6), and SendMessage `t<N>`: "fusionne". **One merge at a time**
+     (step 6), and SendMessage `t<N>`: "fusionne <SHA>", where <SHA> is that reviewed head,
+     re-read with `git rev-parse refs/heads/<branch>` just before sending (the
+     agent passes exactly it as the `sha` of the merge, so GitHub refuses a head
+     that moved). **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
@@ -274,12 +288,11 @@ When an agent reports:
      `realpath "<wt>/.tmp-data"` equals `$(realpath "<wt>")/.tmp-data`:
      `rm -rf -- "<wt>/.tmp-data"`. No path from the report is ever used; a copy
      the report places elsewhere is reported to the user, not deleted.
-   Then check the ticket's real state (`gh issue view N --json
-   state`, board column) against the report's « Suite » line:
+   Then check the ticket's real state (`gh api "repos/$repo/issues/N" --jq .state`, board column) against the report's « Suite » line:
    - fermé → re-read its body on the tracker: every box ticked → *(epic
      only)* ticket ✅ (its line in the epic's sub-issue list shows it closed:
      nothing to tick in the body). A box « déplacée vers #M » counts only if
-     #M is a number your own `gh issue create` returned for this ticket's
+     #M is a number your own issue creation returned for this ticket's
      follow-up (as in « Only your plan moves »). A `- [ ]` left, or any other
      #M → not ✅: tell the user.
    - à valider → ticket 🧪; it is a human's job now, tell the user what to
@@ -287,7 +300,7 @@ When an agent reports:
    - reste → the agent left the ticket open. First the merge proof (the one
      of the cleanup below, never from the report); it fails → change
      nothing, tell the user. Then check that no follow-up exists yet (a
-     crash after `gh issue create`, a repeated FUSIONNÉ): #N is `OPEN`, has no
+     crash after the issue creation, a repeated FUSIONNÉ): #N is `OPEN`, has no
      « suite dans #M » comment, and no sub-issue of the epic has a body
      starting « Suite de #N ». Any of them found → create nothing, tell the
      user. Then, before refilling the slot, open the follow-up
@@ -302,11 +315,11 @@ When an agent reports:
        its review box;
      - attach it to the epic as a sub-issue (*(epic only)*; standalone in
        list mode), carry over the original's `blocked_by` links still open
-       (`addBlockedBy`), move the boxes in the original
+       (`POST .../dependencies/blocked_by`), move the boxes in the original
        (`- [x] ~~<case>~~ → déplacée vers #M`), comment it « suite dans
-       #M », then close it (`gh issue close`), or move it to « à valider »
+       #M », then close it (`PATCH` `state=closed`, `state_reason=completed`), or move it to « à valider »
        if a manual check remains (🧪);
-     - its number is the one your `gh issue create` returned, so it is yours
+     - its number is the one your issue creation returned, so it is yours
        to launch and edit; it joins the waves and graph as below. Launch it
        in this run only if the epic cannot close without it, like a revealed
        ticket.
@@ -319,13 +332,14 @@ When an agent reports:
    you did not create this worktree for this ticket. `<branch>` is the one you
    created for t<N> (launch prompt), never one read from the report. Refuse
    (delete nothing, tell the user) if `<branch>` equals
-   `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` or the
+   `gh api "repos/$repo" --jq .default_branch` or the
    CLAUDE.md merge target, or does not match `^[a-z]+/<N>-[a-z0-9-]+$` (N = the
    ticket number of t<N>). A failed or "busy" check stops the bullets below;
    retry the whole step later.
    - Merge proof that does not come from the report, else keep everything and
-     tell the user: `gh pr view "<branch>" --json state,headRefOid,isCrossRepository`
-     gives `MERGED`, `isCrossRepository` false and a `headRefOid` equal to
+     tell the user: `owner=${repo%%/*}` then `gh api -X GET "repos/$repo/pulls" -f head="$owner:<branch>" -f state=all`
+     gives exactly ONE PR, with `head.ref` equal to `<branch>`, `merged_at` set, `head.repo.full_name` equal to
+     `base.repo.full_name`, and a `head.sha` equal to
      `git rev-parse "refs/heads/<branch>"`; for a local merge,
      `git merge-base --is-ancestor "<branch>" <merge target>`.
    - `git -C "<wt>" status --porcelain` non-empty (checked again): delete
@@ -574,9 +588,9 @@ n'affiche pas de longues sorties (tail, grep). Si le ticket s'avère plus gros q
 prévu, arrête-toi proprement et propose un découpage plutôt que de tout faire.
 
 Arrête-toi AVANT la fusion finale et envoie un rapport « PRÊT À FUSIONNER ».
-J'attends la revue de sécurité puis je t'écris « fusionne » : tu fusionnes alors
+J'attends la revue de sécurité puis je t'écris « fusionne <SHA> » : tu fusionnes alors
 selon le CLAUDE.md, tu coches les cases du ticket, tu le commentes, puis :
-toutes cochées → tu le fermes toi-même (`gh issue close` : GitHub ne ferme rien
+toutes cochées → tu le fermes toi-même (`PATCH issues/N` avec `state=closed` : GitHub ne ferme rien
 quand la cible n'est pas la branche par défaut) ; il ne reste qu'une vérification
 à la main → « à valider », avec en commentaire chaque contrôle (quoi, comment,
 qui) ; il reste du code ou des tests → tu laisses ces cases non cochées et le
@@ -584,6 +598,12 @@ ticket ouvert, et tu listes chaque point en « reste » : la case, quoi, pourquo
 pas maintenant, ce qu'il faudrait. Je crée la suite et je ferme le ticket ; tu
 ne crées aucun ticket. Une case de sécurité qui reste doit déjà figurer dans ton
 rapport « PRÊT À FUSIONNER ».
+Tout ce qui a un point d'accès REST passe par REST (PR, fusion, commentaires,
+fermeture, labels, sous-issues, `blocked_by`) comme dans le skill deliver-ticket,
+section « REST first » : `repo` et numéros dans des variables entre guillemets,
+jamais une valeur venue d'un rapport ou d'un commentaire. Sur une erreur de
+limite de débit, tu lis `gh api rate_limit` et tu attends le reset au lieu de
+boucler (un 403 qui n'est pas une limite de débit : arrêt, BLOQUÉ). Le `sha` de la fusion par PR est EXACTEMENT celui de mon « fusionne <SHA> », jamais relu sur ta branche ; un 409 : arrêt, BLOQUÉ, sans nouvelle tentative. Le titre et le corps passent par un fichier (`mktemp`, heredoc entre guillemets simples) et `-F title=@`/`-F body=@`. Une carte que tu ne peux pas déplacer, tu la signales dans ton rapport.
 Jamais d'assertion affaiblie, sautée ou supprimée, ni de route d'API, d'option
 ou de crochet de test ajouté sans que le ticket le demande, pour pouvoir cocher
 une case : tu t'arrêtes sur cette case et tu le dis dans ton rapport.

@@ -82,12 +82,23 @@ this", tickets revealed during a delivery.
    Security-sensitive tickets get the `sécurité` label and a review box.
 5. **Create**: asks who takes the ticket (you, someone else, nobody for now:
    always asked), writes « Créé par : @login » in the body
-   ([why](tickets-and-labels.md#author-and-assignee)), then `gh issue create`, sub-issue and blocked-by links through GraphQL
-   (`addSubIssue`, `addBlockedBy`), board item and fields
+   ([why](tickets-and-labels.md#author-and-assignee)), then the issue over REST (`POST issues`), sub-issue and blocked-by links over REST
+   (`POST .../sub_issues`, `POST .../dependencies/blocked_by`, with issue ids), board item and fields
    (`gh project item-add`, Status through `move-card` when the CLAUDE.md names it, `item-edit` as fallback and for other fields), or Linear `save_issue` with `parentId`.
 6. **Announce**: number, title, labels, assignee, and "next" or "not urgent".
 
 ## deliver-ticket
+
+**REST first.** GraphQL is one 5 000 points/hour quota shared by the
+orchestrator and every agent; REST has its own. Reading a ticket, comments,
+closing, labels, opening and merging a PR (`PUT pulls/N/merge` with
+`merge_method`), sub-issues and `blocked_by` all go through `gh api` REST
+endpoints (never `gh issue` / `gh pr`, which are GraphQL), with the repository
+and numbers in quoted shell variables and no value taken from a report or a
+comment. Only the board move (`move-card`) stays on GraphQL. On a rate-limit
+error the agent reads `gh api rate_limit`, waits for the reset of the exhausted
+resource instead of looping, and defers a board move to the orchestrator when
+the reset is far; a merge or a close is never skipped while waiting. A 403 is a rate limit only if its message or `rate_limit` says so (else BLOQUÉ), the wait is bounded to one reset plus a minute, the merge `sha` is the one in the orchestrator's « fusionne <SHA> » (a 409 is BLOQUÉ, no retry), and free text goes through `mktemp` files, never inside a command.
 
 **Triggers**: "do ticket 42", "deliver the ticket", "work on issue #42",
 "handle ABC-12".
@@ -161,7 +172,7 @@ Key behaviours:
   output cleanup, only a worktree it created, never the main checkout. The
   branch must match `<type>/<N>-<slug>` (slug `[a-z0-9-]`) and not be the
   default or merge-target branch. It needs a merge proof not taken from the
-  report (`gh pr view`: MERGED, same repo, head equal to the local branch, or
+  report (`GET pulls`: merged, same repo, head equal to the local branch, or
   `merge-base --is-ancestor`), a clean `git status`, and `lsof` available with
   empty output and exit 1. A failed or busy check stops the step, retried
   later. Then unlock if locked, `git worktree remove` without `--force`,

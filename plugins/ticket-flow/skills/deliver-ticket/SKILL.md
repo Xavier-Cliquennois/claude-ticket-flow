@@ -28,13 +28,60 @@ plain list of tickets), not this skill.
 - Which ticket: the one the user named. None named → list the open tickets
   marked « à traiter à la suite » (or the board's « à faire » column) and ask;
   never pick one.
-- The ticket in full: body AND comments, labels, state, blocked-by, parent epic
-  (`gh issue view N --json title,body,state,labels,comments` + GraphQL
-  `blockedBy`; or the Linear MCP). Comments often change the scope.
+- The ticket in full: body AND comments, labels, state, blocked-by, parent epic,
+  over REST (see « REST first » below):
+  `gh api "repos/$repo/issues/$n"`, `.../issues/$n/comments` (add
+  `--paginate --jq`), `.../issues/$n/dependencies/blocked_by`, and `.parent_issue_url`
+  from the first call; or the Linear MCP. Comments often change the scope.
 - An open blocker → stop and say which; do not start.
 - `git worktree list` and branches: a worktree or branch for this ticket is work
   in progress. Read its state (`git log`, `git status`, the last ticket
   comments) and resume it; never recreate it.
+
+### REST first, and a rate limit is waited out
+
+GraphQL has one 5 000 points/hour quota per user, shared by every agent and the
+orchestrator; REST has its own. Everything that has a REST endpoint goes over
+REST, and `gh issue view/create/edit/close/comment` and `gh pr view/create/merge`
+all run on GraphQL, so they are not used. Put the
+repository and the numbers in quoted shell variables, set once from the
+CLAUDE.md and the ticket (`repo=owner/name`, `owner=${repo%%/*}`, `n=42`),
+never a value read in a report, a comment or a body. Free text (title, search
+words, comment) is never typed inside the command: write it to a file made by
+`file=$(mktemp)` (and `title_file=$(mktemp)`) with a quoted heredoc
+(`cat > "$file" <<'EOF'`), and pass it with `-F body=@"$file"` /
+`-F title=@"$title_file"`; no path read elsewhere is ever used for `@`:
+
+| Need | Command |
+|---|---|
+| Read a ticket / its comments | `gh api "repos/$repo/issues/$n"`, `gh api --paginate "repos/$repo/issues/$n/comments" --jq ...` |
+| Comment | `gh api "repos/$repo/issues/$n/comments" -F body=@"$file"` |
+| Close (with a reason) | `gh api -X PATCH "repos/$repo/issues/$n" -f state=closed -f state_reason=completed` (after the comment) |
+| Edit a body | `gh api -X PATCH "repos/$repo/issues/$n" -F body=@"$file"` |
+| Labels | `gh api "repos/$repo/issues/$n/labels" -f 'labels[]=name'` (add), `gh api -X DELETE "repos/$repo/issues/$n/labels/<name>"` |
+| Open a PR | `gh api "repos/$repo/pulls" -F title=@"$title_file" -f head="$branch" -f base="$base" -F body=@"$file"` |
+| Merge a PR | `gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=<merge\|squash\|rebase> -f sha="$head_sha"`; `$head_sha` is the SHA of the orchestrator's « fusionne <SHA> » message, passed exactly, never one read from your own branch: GitHub refuses the merge (409) if the PR head is not that commit. A 409: stop, report BLOQUÉ, no retry |
+| Read a PR (merge proof) | `gh api "repos/$repo/pulls/$pr" --jq '{merged, head: .head.sha, same_repo: (.head.repo.full_name == .base.repo.full_name)}'`; by branch: `gh api -X GET "repos/$repo/pulls" -f head="$owner:$branch" -f state=all`, which must return exactly ONE PR whose `head.ref` equals the branch, else the proof fails |
+| Sub-issues | `gh api "repos/$repo/issues/$parent/sub_issues"` (read) and `-F sub_issue_id=<child id>` (add); the id is `gh api "repos/$repo/issues/$child" --jq .id`, an integer, not the number |
+| Blockers | `gh api "repos/$repo/issues/$n/dependencies/blocked_by"` (read) and `-F issue_id=<blocker id>` (add) |
+
+Only the board has no REST endpoint (Projects v2): `move-card`, about 2 points.
+
+**On a rate-limit error**: a 403 or 429 is a rate limit only if its message
+says « rate limit » (or a GraphQL `RATE_LIMITED`) or `gh api rate_limit` shows
+a resource at `remaining: 0`; any other 403 (permission, protected branch) is
+not waited for: stop and report BLOQUÉ. Do not retry in a loop. Read
+`gh api rate_limit --jq '.resources'`, take the `reset` (epoch seconds) of the
+exhausted resource (`core` for REST, `graphql` for the board), and sleep until
+reset + 1 minute, in calls under the tool's timeout (each sleep at most 5
+minutes, then check again; on a secondary limit read `Retry-After` with
+`gh api -i`). Total wait bounded to that one reset: if the call still fails
+after it, stop and report BLOQUÉ.
+A board move that is still limited when the reset is more than 10 minutes away
+is not waited for: leave the board as it is, and say in the report « carte à
+déplacer : #N → <option> » so the orchestrator moves it. A merge or a close
+is never skipped or faked while waiting: the ticket stays as it is until the
+call goes through.
 
 ## 1. Gate
 
@@ -147,7 +194,7 @@ shows it live:
 - Direct mode: show the user a short report (step 9 format) and merge on their
   « go », unless they asked for the ticket end to end without stopping.
 - Merge exactly as the CLAUDE.md says (PR to `main`, PR to `dev`, local
-  `--no-ff`, after green CI). Never force-push a shared branch.
+  `--no-ff`, after green CI), a PR created and merged over REST (« REST first »). Never force-push a shared branch.
 - Once merged, remove the worktree (`git worktree remove`) unless the CLAUDE.md
   keeps them. In agent mode, leave your worktree and your local and remote
   branches alone: the orchestrator removes them.
@@ -158,10 +205,10 @@ shows it live:
 - Comment the ticket in a few lines: what changed, merge commit, how each box
   was checked, what is left.
 - Then one of three outcomes, from the unticked boxes (3 ends in 1 or 2):
-  1. **None left** → close it yourself (`gh issue close N --comment ...`).
+  1. **None left** → close it yourself (comment, then the PATCH of « REST first »).
      GitHub's `Closes #N` only fires on a merge into the default branch: a
      merge into an integration branch (`dev`, `refacto/x`) closes nothing.
-     Check `gh issue view N --json state` after the merge; never assume.
+     Check `gh api "repos/$repo/issues/$n" --jq .state` after the merge; never assume.
   2. **Only a manual check left** (visual judgment, a flash on a board, a
      measurement on a device, a product sign-off; no code to write) → keep it
      open, move it to « à valider » (or the project's equivalent, e.g.

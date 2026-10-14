@@ -45,6 +45,11 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Moving a card: `.claude/scripts/move-card --repo acme/shop --project 3 <N> "<option>"`
   (about 2 GraphQL points whatever the board size); never `gh project item-list`
   to find a card.
+- Quota: everything with a REST endpoint goes through `gh api repos/<owner>/<repo>/...`
+  (issues, comments, closing, labels, PRs and `pulls/N/merge`, sub-issues,
+  `blocked_by`), never `gh issue` / `gh pr` (GraphQL, shared quota); only
+  `move-card` uses GraphQL. On a rate-limit error: read `gh api rate_limit`,
+  wait for the reset, do not loop.
 - Tickets are written with the `write-ticket` skill.
 - Mandatory labels: a type, `model:opus|sonnet`, `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are

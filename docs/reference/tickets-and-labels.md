@@ -112,8 +112,8 @@ listed « à assigner » in the closing summary.
 
 ## Where tickets go
 
-- **GitHub**: `gh issue create` (with `--assignee` when someone takes it); sub-issue and blocked-by links with GraphQL
-  (`addSubIssue`, `addBlockedBy`, node ids from `gh issue view N --json id`).
+- **GitHub**: `POST repos/<owner>/<repo>/issues` through `gh api` (with `assignees` when someone takes it); sub-issue and blocked-by links over REST
+  (`sub_issues`, `dependencies/blocked_by`, integer ids from `gh api .../issues/N --jq .id`).
 - **GitHub Projects**: `gh project item-add` (idempotent: on an issue already
   on the board it returns the existing item, which is also how to find it),
   then `gh project item-edit` for Status and custom fields.
