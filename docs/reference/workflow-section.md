@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-10-13 (ticket-flow 0.5.1).
+> Up to date as of 2026-10-14 (ticket-flow 0.6.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
 line under the heading is a template marker, `<!-- ticket-flow workflow: 3 -->`:

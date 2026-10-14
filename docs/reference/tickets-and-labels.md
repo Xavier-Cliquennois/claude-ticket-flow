@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-10-13 (ticket-flow 0.5.1).
+> Up to date as of 2026-10-14 (ticket-flow 0.6.0).
 
 ## The size gate
 
