@@ -172,14 +172,19 @@ Key behaviours:
   `setup-project` cache step in the same session is accepted only if the
   snapshot matched just before it and only `~/.cargo/config.toml` changed;
   a git change you ask the orchestrator for (remote, config, hook install)
-  is made only while no agent runs, and accepted only if it matched before
+  is made only while no agent runs and no process uses a ticket worktree
+  (if the slots never empty, the orchestrator stops refilling and tells you
+  it is draining), and accepted only if it matched before
   and only the one line that change touches (`.git/config` or the hooks
   line) changed. Ticket agents are told never to write to any of these
   places; worktrees are created with `--no-track` and agents push only with
   `git push origin "<branch>"`, so no upstream lands in `.git/config`. The
-  orchestrator's cleanup and sync git commands run with
-  `-c core.hooksPath=/dev/null`, so a hook planted between two checks never
-  runs. A
+  orchestrator's own git commands (all but the snapshot) run with
+  `-c core.hooksPath=/dev/null -c core.fsmonitor=false`, so a hook or
+  fsmonitor planted between two checks does not run; transport settings
+  (`core.sshCommand`, `credential.helper`, `remote.*.uploadpack` /
+  `receivepack`) still run on a fetch or push and are only caught by the
+  comparison, after the fact. A
   resumed run shows you the files' sizes and dates, and any alert mentioned
   in the epic (lifted or not) waits for your own word before a new snapshot.
   A branch that touches any `.cargo` path inside the repository (any case,

@@ -462,8 +462,11 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
   differs → the bullet above.
 - **Your own git changes** (a `git remote`, `git config` or hook install the
   user asked you for, a `setup-project` step that touches git): only while
-  no agent is running (between waves, all slots empty); otherwise wait until
-  then. Run the command right before (equal to the baseline, else the alert
+  no agent is running (between waves, all slots empty) and no process uses
+  a ticket worktree (`lsof +D` empty on each, the same guard as at
+  FUSIONNÉ, so no agent daemon writes in the window); otherwise wait until
+  then. If the slots never empty, stop refilling and tell the user you are
+  draining. Run the command right before (equal to the baseline, else the alert
   bullet) and right after; if the only line that differs is the one that
   change touches (`.git/config` for a remote or a config, `hooks` /
   `hooks-depot` for a hook install, never both), keep that output as the new
@@ -576,9 +579,14 @@ then:
        ticket.
      A report with « reste » and nothing unticked on the tracker → no
      follow-up; tell the user.
-   Every git command of this cleanup, and of the integration-branch sync
-   below, runs as `git -c core.hooksPath=/dev/null ...`: a hook planted and
-   removed between two comparisons never runs with your rights.
+   Every git command you run (fetch, merge, worktree add/remove, branch -D,
+   push, status...), except the snapshot command, runs as
+   `git -c core.hooksPath=/dev/null -c core.fsmonitor=false ...`, here, in
+   the sync below and in step 6: a hook or fsmonitor planted and removed
+   between two comparisons does not run with your rights. This does not
+   cover the transport settings (`core.sshCommand`, `credential.helper`,
+   `remote.*.uploadpack` / `receivepack`): a fetch or push still runs them,
+   and only the comparison catches them, after the fact.
    Once the ticket's state above is settled, remove its worktree and branches,
    with the same `<wt>` and guards as the build output cleanup (resolved from
    the branch you created, never the main checkout, never another ticket's,
