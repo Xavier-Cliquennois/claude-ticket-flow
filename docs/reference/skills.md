@@ -29,11 +29,15 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 For a compiled project, `setup-project` offers `sccache` (Rust) or `ccache`
 (C/C++) so a new worktree reuses the dependencies another one already built.
 The install and the edit of the user-level `~/.cargo/config.toml` are shown
-and done only after a yes. It does not offer a shared target dir: cargo
+and done only after a yes: the file is backed up first, the key goes into the
+existing `[build]` table (never a second one), cargo is checked to still read
+it, and the backup is restored if not. Detection also reads `$CARGO_HOME` and
+the legacy `~/.cargo/config`, reports `SCCACHE_*` variables, and offers a local
+cache only. It does not offer a shared target dir: cargo
 locks it and agents would serialise. The cache does not cover the workspace's
 own crates (incremental compilation), which each worktree still builds. The
-`run-epic` agent prompt tells agents not to override the wrapper nor point
-`CARGO_TARGET_DIR` at a common folder.
+`run-epic` agent prompt tells agents not to override the wrapper nor set
+`SCCACHE_*`, stop the sccache server, or point `CARGO_TARGET_DIR` at a common folder.
 
 ### move-card
 

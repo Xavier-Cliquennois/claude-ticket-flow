@@ -223,7 +223,8 @@ Si le disque se remplit (ENOSPC) ou si je te préviens qu'il l'a été, refais
 
 Cache de compilation : si le projet en a un partagé (sccache en `rustc-wrapper`,
 ccache), ne le contourne pas : ne change ni `RUSTC_WRAPPER` ni `rustc-wrapper`
-ni `~/.cargo/config.toml`, et ne définis pas `CARGO_TARGET_DIR` vers un dossier
+ni `~/.cargo/config.toml`, ne définis aucune variable `SCCACHE_*`, n'arrête pas le serveur sccache
+(`sccache --stop-server`) : il ne t'appartient pas ; et ne définis pas `CARGO_TARGET_DIR` vers un dossier
 commun (cargo le verrouille : les agents s'attendraient). Ton `target/` reste
 dans ton worktree. Le cache ne couvre pas les crates du workspace lui-même
 (compilation incrémentale) : elles sont recompilées chez toi, c'est normal.
