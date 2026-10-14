@@ -118,11 +118,19 @@ When an agent reports:
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
-   cannot be removed yet (locked by the harness): delete only inside that
-   ticket's own worktree, the build directories the project builds into
-   (`target/`, `node_modules/.cache`, `.next`, `dist`, ...) and any data copies
-   its report lists. Never run it on the main checkout or another ticket's
-   worktree. Removing the worktree itself is a separate step.
+   cannot be removed yet (locked by the harness). The worktree path is the one
+   `git worktree list --porcelain` gives for the ticket's branch, made absolute
+   with `realpath`, never a path taken from the report (it is free text, built
+   from ticket comments anyone can edit). Never the main checkout or another
+   ticket's worktree. Steps, in the worktree `<wt>`:
+   - `git -C "<wt>" status --porcelain` non-empty → delete nothing, tell the user.
+   - Otherwise only ignored files, from this closed list of folders:
+     `git -C "<wt>" clean -fdX -- target .next dist node_modules/.cache`.
+     Skip any of them for which `test -L "<wt>/<dir>"` is true (often a symlink
+     to the main checkout). Never run it with an empty or unresolved `<wt>`.
+   - Data copies the report lists: delete one only if `realpath` of it starts
+     with `<wt>/`; any other path is reported to the user, not deleted.
+   Removing the worktree itself is a separate step.
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
    - fermé → *(epic only)* tick the epic's line; ticket ✅.
@@ -195,8 +203,9 @@ de livraison suggère (revue, exploration, tests en parallèle). Tu fais tout
 toi-même ; le plafond de N agents et la charge machine en dépendent.
 
 Disque : un build occupe plusieurs Go dans ton worktree. Si tu copies des
-données réelles pour une comparaison, garde-en une ou deux copies au plus et
-supprime-les dès la comparaison faite ; indique dans ton rapport ce qui reste.
+données réelles pour une comparaison, garde-en une ou deux copies au plus,
+uniquement sous ton worktree (ex. `<worktree>/.tmp-data/`), jamais ailleurs, et
+ne supprime jamais rien hors de ton worktree ni la source ; supprime-les dès la comparaison faite ; indique dans ton rapport ce qui reste.
 Si le disque se remplit (ENOSPC) ou si je te préviens qu'il l'a été, refais
 `git status` et `git diff`, puis relance ce qui a échoué entre-temps.
 

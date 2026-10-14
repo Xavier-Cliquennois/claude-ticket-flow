@@ -113,8 +113,11 @@ Key behaviours:
   count, is the limit: flaky timing tests under load mean lowering N;
 - checks free disk before each wave (below 20 GB or N x one agent's build
   size: clean finished worktrees, else launch fewer agents) and reports it;
-  deletes a merged ticket's build output (`target/`, caches, data copies) right
-  away, even when its worktree is locked; after a disk-full episode, it messages every
+  deletes a merged ticket's build output right away, even when its worktree
+  is locked: only when `git status` is clean, only ignored files in a closed
+  folder list (`target`, `.next`, `dist`, `node_modules/.cache`), never a
+  symlink, always inside the worktree path from `git worktree list` (never a
+  path from the report); agents keep data copies under their own worktree; after a disk-full episode, it messages every
   running agent to re-check `git status` / `git diff` and re-run what failed;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
