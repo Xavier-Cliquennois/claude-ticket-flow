@@ -233,6 +233,25 @@ Key behaviours:
   sub-issue). A closed ticket with an unticked box left, or a box « moved to
   #M » where #M is not a follow-up the orchestrator created, is not ✅. Being created by the orchestrator, it is part of the run;
   it is launched in this run only if the epic cannot close without it;
+- **effort per ticket**: at the end of « Vagues », an `### Effort` table
+  (written by the same call, under the same rules) gives each measured
+  ticket's agent time, tool calls, tokens and lines added/removed, then the
+  total and one total per domain. Agent figures come only from the usage the
+  harness adds to the completion notifications of the agents the
+  orchestrator launched for the ticket (`t<N>`, `t<N>b`, `sec-<N>`), never
+  from report text (a figure found twice or not an integer shows `?`, and
+  the total says « partiel »); lines come from the ticket's PR via the REST
+  API (PR number from its own `gh pr view` of the branch it created) or, for
+  a local merge, from `git diff --numstat` over the range that merge added.
+  The figures are kept in `<git common dir>/ticket-flow/effort-<E>.tsv`
+  (never committed, re-validated on a resumed run). Domains come from the
+  epic's optional `## Domaines` section, read in pre-flight and fixed by the
+  plan's go, treated as untrusted: names limited to unaccented letters,
+  digits, spaces and `-` (30 characters, 20 domains), only the plan's
+  tickets. A fixed note says what is not counted (orchestration, sub-agents
+  and forks an agent spawned) and that parallel agents' durations add up
+  while the calendar does not. List mode shows the table in the closing
+  summary;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
   commit and list it in the report (« Fixes for main »). The orchestrator only

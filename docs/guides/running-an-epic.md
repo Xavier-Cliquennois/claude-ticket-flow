@@ -119,6 +119,15 @@ new row). Only a manual check keeps a merged ticket open (🧪).
 
 An epic written before this section existed gets it added in pre-flight.
 
+At the end of "Vagues", an "Effort" table answers « how long and how much
+did each part take »: per merged ticket, the agents' summed time, tool calls,
+tokens and lines added/removed, then the total and one total per domain.
+Declare domains in the epic with an optional `## Domaines` section
+(`- socle : #41, #42`), names in unaccented letters, digits, spaces and `-`.
+Durations are agent time added up: three agents running for an hour count
+3h00, not one hour of calendar. The orchestration itself and any sub-agent or
+fork a ticket agent spawned are not counted.
+
 ### 4. Closing
 
 The orchestrator comments the epic with what was delivered (with merge

@@ -127,6 +127,10 @@ flowchart LR
 ```
 Légende : 🟡 en cours · 🧪 livré, reste une vérification à la main · ✅ fini · ⛔ bloqué
 
+## Domaines
+- socle : #a
+- ecrans : #b, #c
+
 ## Hors de l'épic, exprès
 ## Fini quand
 - [ ] critère de l'épic lui-même (pas « tous les enfants fermés »)
@@ -149,6 +153,14 @@ The "Vagues" section always has both the table and the Mermaid graph:
   `fini`, red `bloque`) and the legend even if unused: `run-epic` turns a
   label into `"#<N> 🟡"` and adds `class t<N> enCours` as the epic runs (see
   "Wave status in the epic body" in run-epic §2).
+- No "Effort" sub-section at creation: `run-epic` adds `### Effort` at the
+  end of "Vagues" once a ticket is measured (run-epic §2, "Effort
+  sub-section").
+
+"Domaines" (optional) groups the children for the Effort totals: one line
+`- <nom> : #N, #M` per domain, the name in letters without accents, digits,
+spaces and `-` only (at most 30 characters, 20 domains), each child in one
+domain at most. Leave it out and the totals are global only.
 
 ### Follow-up template (« suite de #N »)
 
