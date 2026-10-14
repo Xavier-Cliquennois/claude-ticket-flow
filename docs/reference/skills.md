@@ -157,6 +157,14 @@ Key behaviours:
   ticket's status (🟡 in progress, 🧪 merged and waiting for a human check,
   ✅ closed, ⛔ parked or blocked); follow-up and revealed tickets join them
   live;
+- **long-lived integration branch** (merge target is not `main`): agents put
+  a production bug fix that also concerns `main` in a separate `fix(...)`
+  commit and list it in the report (« Fixes for main »); the orchestrator
+  keeps the list and PROPOSES one small ticket + PR to `main` with a test per
+  fix that fails without it (nothing is pushed nor opened without the user's
+  go); between waves, once the wave is merged, it merges `main` into the
+  integration branch (conflicts on a fix present twice: keep both
+  contributions; anything non-trivial is asked in plain text);
 - epic closed only on its own checklist;
 - publishes its stage to `orchestra` when the mod is installed.
 
@@ -170,6 +178,7 @@ Checks: command -> result
 Browser: Chrome | Playwright | NOT DONE (reason)
 Docs: updated (files) | none concerned
 Revealed tickets: title + one line each
+Fixes for main: none | hash of the fix(...) commit, the bug, the test failing without it
 Risks / what I could not verify:
 ```
 

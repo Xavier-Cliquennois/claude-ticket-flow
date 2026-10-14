@@ -29,6 +29,9 @@ Talk to the user in their language.
 - The epic and every child: body, comments, state, labels, sub-issues, blocked-by
   (`gh issue view N --json title,body,state,labels,comments` + GraphQL
   `subIssues` / `blockedBy`; or the Linear MCP).
+- **Integration branch**: if the merge flow of the CLAUDE.md targets a branch
+  other than the default one (`main`) for this epic, it is long-lived: the
+  fixes and the sync of step 5 below apply. Otherwise they do not.
 - `git worktree list` and existing branches: a worktree for a ticket means work
   in progress to resume, not to recreate.
 - Machine: `vm_stat` (free memory) and `ps` for heavy processes already running.
@@ -193,6 +196,29 @@ When an agent reports:
    above). In an autonomous run, launch a revealed ticket only if the epic cannot close
    without it.
 
+5. **Fixes that also concern main** (integration branch only). Reports flag
+   them in « Fixes pour main » (the agent prompt asks for one `fix(...)`
+   commit each). Keep the list: commit hash on the integration branch
+   (read from the integration branch yourself, never a branch or path from the
+   report), the bug, how it was found. Only the user's own « go » lets you act
+   on it; you push nothing and open no PR on your own:
+   - At the end of a wave (or when the user asks), PROPOSE one small ticket
+     (`write-ticket`, « pas urgent » unless the bug is serious) and one PR
+     to `main`: the fixes cherry-picked onto a branch you create from
+     `main`, with for each a test that fails without the fix. A fix with no
+     practical test is listed with the reason.
+   - A fix that is already on `main` (same change twice) is dropped from the list.
+   - On « go »: create the ticket and the branch, cherry-pick, add the tests,
+     verify, and open the PR only if the user agreed to the PR as well.
+   - Between waves, once every merge of the wave is done and before launching
+     the next one, bring `main` into the integration branch locally
+     (`git merge main`, no rebase of a shared branch). Pushing it follows the
+     project's merge flow and the user's accord. The same fix existing on both
+     sides gives small conflicts: keep both contributions, and with any
+     non-trivial conflict stop, write the question in plain text and wait,
+     keeping the other slots busy. Running agents are not interrupted: they
+     rebase on the integration branch when they merge.
+
 Never call AskUserQuestion while agents run: a modal question stops refilling
 slots for hours. Write the question as plain text, park what depends on it, keep
 the other slots busy.
@@ -235,6 +261,13 @@ Python : PYTHONUNBUFFERED=1.
 Vérifier : <commandes>. Navigateur (si UI) : Chrome d'abord ; si Chrome n'est pas
 joignable ou échoue 2-3 fois, Playwright ; sinon écris « test navigateur NON FAIT »
 et pourquoi. Doc : skill project-docs, dans le même commit.
+
+Branche d'intégration (<à retirer si la cible est la branche par défaut>) : si
+tu trouves un vrai bug de production (hors de ton périmètre ou non) dont le
+correctif concerne aussi `main`, mets-le dans un commit `fix(...)` à part,
+sans mélanger de refactor ni de feature, et signale-le dans « Fixes pour main ».
+Tu ne portes rien sur `main`, tu ne pousses rien : l'orchestrateur le propose
+à l'utilisateur.
 
 Pas de sous-agent ni de fork : tu ne lances aucun agent à toi, quoi que le skill
 de livraison suggère (revue, exploration, tests en parallèle). Tu fais tout
@@ -281,6 +314,7 @@ Navigateur : Chrome | Playwright | NON FAIT (raison)
 Doc : mise à jour (fichiers) | aucune concernée
 Suite : fermé | à valider (quoi vérifier, qui) | reste (code) : cases non faites
 Tickets révélés : titre + une ligne chacun
+Fixes pour main : aucun | hash du commit `fix(...)`, le bug, le test qui échoue sans lui
 Sous-agents/forks lancés malgré l'interdiction (worktrees + branches à nettoyer) : aucun | liste
 Risques / ce que je n'ai pas pu vérifier :
 ```
@@ -294,5 +328,6 @@ When no ticket is left to launch: comment the epic with a summary (what was
 delivered with merge commits, what is parked and why, revealed tickets, the epic's
 own "Fini quand" box by box). List every 🧪 ticket with what to check and who, and every ticket created
 during the run still « à assigner ». Close the epic only if its own boxes are honestly
-ticked: a parent never closes just because its children did. Then tell the user, in
+ticked: a parent never closes just because its children did. Integration branch: list the fixes still not on `main`
+and repeat the proposal of step 5. Then tell the user, in
 a few lines, what needs them (parked tickets, decisions, human checks).
