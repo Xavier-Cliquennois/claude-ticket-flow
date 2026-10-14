@@ -203,7 +203,9 @@ Key behaviours:
   numbers, models, states, emoji and its own short wave reasons in plain
   characters (no titles). It writes nothing after a failed or empty read,
   with two « Vagues » headings, if the rest of the body would not be kept
-  intact, or if the body changed again between its read and the edit;
+  intact, or if the body changed again between its read and the edit (one
+  Bash call, temp files removed on exit; GitHub has no conditional update,
+  so about a second remains between the last comparison and the edit);
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
   commit and list it in the report (« Fixes for main »). The orchestrator only
