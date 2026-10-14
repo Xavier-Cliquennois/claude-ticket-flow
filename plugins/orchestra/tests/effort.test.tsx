@@ -73,3 +73,27 @@ test('on a narrow pane the effort takes its short form and the line still fits',
   for (const found of await ui.findAll({ type: 'Text' })) expect(found.text.length <= 40).toBe(true)
   await ui.unmount()
 })
+
+test('the effort kept for unlisted loops is bounded: past 200, the oldest is dropped', async ($, on) => {
+  const clock = mock.clock(on, { now: Date.UTC(2026, 9, 9, 12, 0) })
+  let list: Info[] = []
+  on('session.start', (_$: unknown, e: { cwd: string }) => ({ cwd: e.cwd }) as never)
+  on('command.register', () => ({ value: undefined }) as never)
+  on('tool.register', () => ({ value: undefined }) as never)
+  mock.env(on, {})
+  on('agent.list', () => ({ value: list }) as never)
+  on('session.usage', () => ({ value: { context: { window: 200000 } } }) as never)
+  on('tool.call', () => ({ result: 'ok' }) as never)
+
+  await $.session.start({ cwd: '/', surface: null, isInteractive: true })
+  // 201 loops call a tool before any tick: the first one is dropped.
+  for (let i = 0; i <= 200; i++) await $.tool.call({ tool: 'Read', file_path: '/x', agentId: `w${i}` })
+  list = [
+    { id: 'w0', name: 'old', description: 'Oldest loop', type: 'general-purpose', status: 'completed' },
+    { id: 'w200', name: 'new', description: 'Newest loop', type: 'general-purpose', status: 'completed' },
+  ]
+  await clock.advance(5000)
+  const ui = await $.ui.mount({ ...pane(96), surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /^Σ 2 agents · 1 appel · 0 tok$/ })).toBeDefined()
+  await ui.unmount()
+})

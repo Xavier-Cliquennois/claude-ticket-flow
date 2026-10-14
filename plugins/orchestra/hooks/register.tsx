@@ -126,12 +126,19 @@ let shellSeq = 0
 
 // Effort counted for a subagent before the tick has listed it (its first
 // requests come before the first tick): merged into its row once listed.
+// Bounded: a loop never listed (a workflow's) would otherwise stay forever,
+// so past MAX_PENDING ids the oldest one is dropped.
 type Effort = { toolCalls: number; tokens: number }
+const MAX_PENDING = 200
 const pendingEffort = new Map<string, Effort>()
 
 async function addEffort($: EngineInterface, id: string, effort: Effort, lastTool?: string): Promise<void> {
   if ((await read($, agents))[id] === undefined) {
     const pending = pendingEffort.get(id) ?? { toolCalls: 0, tokens: 0 }
+    if (!pendingEffort.has(id) && pendingEffort.size >= MAX_PENDING) {
+      const oldest = pendingEffort.keys().next().value
+      if (oldest !== undefined) pendingEffort.delete(oldest)
+    }
     pendingEffort.set(id, { toolCalls: pending.toolCalls + effort.toolCalls, tokens: pending.tokens + effort.tokens })
     return
   }

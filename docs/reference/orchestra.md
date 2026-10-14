@@ -89,7 +89,9 @@ flowchart LR
   it makes) and its tokens (every `turn.step` of its loop: input, cache reads,
   cache writes and output, summed), from its own events alone. What comes
   before the first tick lists the agent is kept aside and added once it is
-  listed. An ended agent keeps its figures.
+  listed. That waiting table holds 200 loops at most, the oldest dropped
+  first, since a loop the list never shows (a workflow's) would stay in it
+  forever. An ended agent keeps its figures.
 - **Commands**: the mod watches every `Bash` call (`tool.call`). A background
   launch answers with its task id and the file its output goes to; the mod
   reads the end of that file on each tick. The command ends with its
