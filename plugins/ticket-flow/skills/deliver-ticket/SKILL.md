@@ -67,6 +67,13 @@ plain list of tickets), not this skill.
   « ticket révélé » (title + one line), not code.
 - Follow the CLAUDE.md's code rules (language, security patterns, style of the
   surrounding code).
+- Never bend the code to make a box tickable: no weakened, skipped or deleted
+  assertion, no loosened threshold, no API route, flag or test hook added only
+  so a test can observe something, unless the ticket asks for it. When a box
+  cannot be proved honestly (no observable form, a dependency on another
+  ticket, a missing decision), stop on that box and say it: it stays unticked
+  and goes to « reste » in the report (step 8, outcome 3), or the delivery
+  becomes « BLOQUÉ » if the rest of the ticket makes no sense without it.
 - Keep your context light: read excerpts, not whole files; never print long
   outputs (`tail`, `grep`). If the ticket turns out bigger than its size, stop
   cleanly and propose a split rather than pushing through.
@@ -148,23 +155,32 @@ shows it live:
 - Tick each « Fini quand » box you proved; leave the others unticked.
 - Comment the ticket in a few lines: what changed, merge commit, how each box
   was checked, what is left.
-- Then exactly one of three outcomes, from the unticked boxes:
+- Then one of three outcomes, from the unticked boxes (3 ends in 1 or 2):
   1. **None left** → close it yourself (`gh issue close N --comment ...`).
      GitHub's `Closes #N` only fires on a merge into the default branch: a
      merge into an integration branch (`dev`, `refacto/x`) closes nothing.
      Check `gh issue view N --json state` after the merge; never assume.
-  2. **Only human checks left** (visual judgment, a flash on a board, a
+  2. **Only a manual check left** (visual judgment, a flash on a board, a
      measurement on a device, a product sign-off; no code to write) → keep it
      open, move it to « à valider » (or the project's equivalent, e.g.
-     Testing), and the comment lists what to check, how, and who.
-  3. **Code or tests left** (a partial delivery) → never leave it open for
-     that: an open ticket with a merged PR must mean « only a check is left ».
-     Direct mode: create the follow-up ticket (`write-ticket`, follow-up
-     shape), in this ticket replace each moved box by
-     `- [x] ~~<case>~~ → déplacée vers #M`, then apply outcome 1 or 2 to what
-     remains. Agent mode: leave the ticket open and list the unticked boxes
-     under « Reste (code) » in the report; the orchestrator creates the
-     follow-up and closes the ticket.
+     To test, Testing), and a comment lists each check: what to check, how,
+     and who. This is the only reason a ticket with merged code stays open.
+  3. **Code or tests left** (a partial delivery: a test with no observable
+     form, a dependency on another ticket, a box you stopped on in step 3) →
+     never leave it open for that: an open ticket with a merged PR must mean
+     « only a manual check is left ». Each leftover point gets three lines:
+     what is left, why not now, what it would take. Then:
+     - Direct mode: create the follow-up ticket (`write-ticket`, follow-up
+       template; « Fini quand » = the unticked boxes as written in this
+       ticket), attach it and carry the links over as that template says, in
+       this ticket replace each moved box by
+       `- [x] ~~<case>~~ → déplacée vers #M`, comment « suite dans #M », then
+       apply outcome 1 or 2 to what remains.
+     - Agent mode: leave the leftover boxes unticked, close the ticket
+       yourself (or « à valider » if a manual check remains too, outcome 2),
+       and list each leftover point under « reste » in the report, with its
+       three lines. The orchestrator creates the follow-up, moves the boxes
+       and comments this ticket; you create no ticket.
 - Later, when someone reports the check done (« j'ai testé #N, c'est bon »):
   tick the box with their words as proof, comment, close, board → « fini »,
   epic node → ✅. A failed check is a bug on the ticket: say what failed in a
@@ -188,10 +204,12 @@ Fini quand : chaque case, cochée ou non, avec la preuve en une ligne
 Vérifs : commande → résultat
 Navigateur : Chrome | Playwright | NON FAIT (raison)
 Doc : mise à jour (fichiers) | aucune concernée
-Suite : fermé | à valider (quoi vérifier, qui) | reste (code) : cases non faites
+Suite : fermé | à valider (quoi vérifier, comment, qui) | reste : par point, la case, quoi, pourquoi pas maintenant, ce qu'il faudrait
 Tickets révélés : titre + une ligne chacun
 Risques / ce que je n'ai pas pu vérifier :
 ```
+
+« Suite » can hold both « à valider » and « reste » (outcome 3 then 2).
 
 In direct mode, end with what needs the user (boxes to check by eye,
 decisions, revealed tickets to prioritise).

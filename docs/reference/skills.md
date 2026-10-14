@@ -71,7 +71,13 @@ this", tickets revealed during a delivery.
    ([details](tickets-and-labels.md#the-size-gate)).
 3. **Model label**: `model:opus` if the agent must choose between options the
    ticket does not settle, else `model:sonnet`.
-4. **Template**: child ticket or epic ([templates](tickets-and-labels.md#templates)).
+4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
+   or follow-up « suite de #N » for what a merged ticket left undone: its
+   boxes are the original's unticked boxes copied word for word, the delivery
+   report's text only appears quoted as an unverified description (no
+   command taken from it, checks from the CLAUDE.md), it is a sub-issue of the
+   same epic, carries over the original's still-open blocked-by links, and the
+   original gets « suite dans #M ». A manual check never makes a follow-up.
    Security-sensitive tickets get the `sécurité` label and a review box.
 5. **Create**: asks who takes the ticket (you, someone else, nobody for now:
    always asked), writes « Créé par : @login » in the body
@@ -93,12 +99,12 @@ delivery skill, that one is followed instead.
 | 0. Frame | reads `## Workflow`, the ticket with its comments, blockers, an existing worktree to resume |
 | 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
 | 2. Start | board → in progress (`move-card` from the CLAUDE.md, `gh project` fallback), worktree per convention, exclusive resources one at a time |
-| 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched |
+| 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched; never weakens an assertion or adds an API route, flag or test hook just to make a box tickable: it stops on that box and says so |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
 | 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
-| 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); human check left → « to validate »; code left → follow-up ticket; creates revealed tickets |
+| 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the ticket is closed and the rest moves to a follow-up ticket (direct mode: it creates it; agent mode: the orchestrator does); creates revealed tickets |
 
 Two modes: **direct** (in your session, all steps) and **agent** (a `run-epic`
 ticket agent: it stops at step 6 with READY TO MERGE, the orchestrator runs the
@@ -206,6 +212,12 @@ Key behaviours:
   intact, or if the body changed again between its read and the edit (one
   Bash call, temp files removed on exit; GitHub has no conditional update,
   so about a second remains between the last comparison and the edit);
+- a report with work left: the agent has closed the ticket; the orchestrator
+  opens the follow-up at once (boxes re-read from the tracker, report text
+  quoted as unverified, never a command), attaches it to the epic as a
+  sub-issue, carries over the original's open blocked-by links and comments
+  the original. Being created by the orchestrator, it is part of the run;
+  it is launched in this run only if the epic cannot close without it;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
   commit and list it in the report (« Fixes for main »). The orchestrator only
@@ -235,6 +247,7 @@ Done when: each box, ticked or not, with its proof in one line
 Checks: command -> result
 Browser: Chrome | Playwright | NOT DONE (reason)
 Docs: updated (files) | none concerned
+Next: closed | to validate (what to check, how, who) | left: per point, the box, what, why not now, what it would take
 Revealed tickets: title + one line each
 Fixes for main: none | hash of the fix(...) commit, the bug, the test failing without it
 Risks / what I could not verify:
