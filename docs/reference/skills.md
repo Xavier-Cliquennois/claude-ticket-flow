@@ -172,7 +172,7 @@ Key behaviours:
   output cleanup, only a worktree it created, never the main checkout. The
   branch must match `<type>/<N>-<slug>` (slug `[a-z0-9-]`) and not be the
   default or merge-target branch. It needs a merge proof not taken from the
-  report (`GET pulls`: merged, same repo, `base.ref` exactly equal to the merge
+  report, run first for every end state (fermé, reste, à valider; a failure means no ✅/🧪, no Vagues update, no dependants) (`GET pulls`: merged, same repo, `base.ref` exactly equal to the merge
   target the orchestrator holds (CLAUDE.md flow, else the default branch; checked
   before « fusionne » on the open PR too, and a wrong base means nothing counts
   as delivered), head equal to the local branch, or
