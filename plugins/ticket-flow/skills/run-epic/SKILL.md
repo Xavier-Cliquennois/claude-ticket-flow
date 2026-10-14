@@ -123,20 +123,20 @@ When an agent reports:
    `git worktree list --porcelain` gives for the branch you created for t<N>
    (the one in its launch prompt), made absolute with `realpath`, never a
    branch or path taken from the report (it is free text, built
-   from ticket comments anyone can edit). Run no command if `<wt>` equals the first `worktree` entry of that
-   listing (the main checkout) or `git rev-parse --show-toplevel` of the
-   orchestrator. Never another
+   from ticket comments anyone can edit). Run no command if `realpath <wt>` equals `realpath` of the first
+   `worktree` entry of that listing (the main checkout) or of
+   `git rev-parse --show-toplevel` of the orchestrator. Never another
    ticket's worktree. Steps, in the worktree `<wt>`:
    - `git -C "<wt>" status --porcelain` non-empty → delete nothing, tell the user.
    - Otherwise only ignored files, from this closed list of folders:
      `git -C "<wt>" clean -fdX -- target .next dist node_modules/.cache`.
      Skip any of them for which `test -L "<wt>/<dir>"` is true (often a symlink
      to the main checkout). Never run it with an empty or unresolved `<wt>`.
-   - Data copies the report lists: delete one only if it is under the dedicated
-     `<wt>/.tmp-data/` or `git -C "<wt>" check-ignore -q <path>` succeeds; the
-     deletion is `rm -rf -- "<resolved>"` on the resolved path only (never the
-     raw path of the report), with `<resolved>` different from `<wt>`; any
-     other path is reported to the user, not deleted.
+   - Data copies: the only thing deleted is the whole `<wt>/.tmp-data`
+     directory, and only if `test -L "<wt>/.tmp-data"` is false and
+     `realpath "<wt>/.tmp-data"` equals `$(realpath "<wt>")/.tmp-data`:
+     `rm -rf -- "<wt>/.tmp-data"`. No path from the report is ever used; a copy
+     the report places elsewhere is reported to the user, not deleted.
    Removing the worktree itself is a separate step.
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
@@ -212,8 +212,10 @@ toi-même ; le plafond de N agents et la charge machine en dépendent.
 Disque : un build occupe plusieurs Go dans ton worktree. Si tu copies des
 données réelles pour une comparaison, garde-en une ou deux copies au plus,
 uniquement dans `<worktree>/.tmp-data/`, jamais ailleurs, et dès la création
-ajoute `.tmp-data/` à `$(git rev-parse --git-path info/exclude)` (ainsi git
-status reste propre et l'orchestrateur peut nettoyer) ; tu
+ajoute `.tmp-data/` à `f=$(git rev-parse --git-path info/exclude)` si absent
+(`grep -qxF '.tmp-data/' "$f" || echo '.tmp-data/' >> "$f"` ; ce fichier est
+partagé par tout le dépôt, d'où le « si absent ») pour que git status reste
+propre et que l'orchestrateur puisse nettoyer ; tu
 ne supprime jamais rien hors de ton worktree ni la source ; supprime-les dès la comparaison faite ; indique dans ton rapport ce qui reste.
 Si le disque se remplit (ENOSPC) ou si je te préviens qu'il l'a été, refais
 `git status` et `git diff`, puis relance ce qui a échoué entre-temps.

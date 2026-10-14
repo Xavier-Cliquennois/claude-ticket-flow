@@ -119,9 +119,11 @@ Key behaviours:
   folder list (`target`, `.next`, `dist`, `node_modules/.cache`), never a
   symlink, always inside the worktree of the branch the orchestrator created
   (from `git worktree list`, never the main checkout, never a path from the
-  report); data copies only under `.tmp-data/` (agents add it to
-  `.git/info/exclude`) or git-ignored, removed with `rm -rf --` on the resolved
-  path; never when `<wt>` is the orchestrator's own checkout; agents keep data copies under their own worktree; after a disk-full episode, it messages every
+  report); data copies: agents keep them only in `<worktree>/.tmp-data/` (added,
+  if absent, to the repo-shared `$(git rev-parse --git-path info/exclude)`);
+  the orchestrator deletes just that directory, never if it or the worktree
+  resolves (`realpath`) elsewhere or is a symlink, and never a path from the
+  report; after a disk-full episode, it messages every
   running agent to re-check `git status` / `git diff` and re-run what failed;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
