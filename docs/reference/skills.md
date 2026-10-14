@@ -151,11 +151,17 @@ Key behaviours:
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
 - one agent at a time on each exclusive resource;
 - ticket agents stop only the processes they started, by PID (no kill by pattern or port), so parallel test servers never kill each other;
-- watches the cargo config outside the repository, which the security gate
-  does not see: a SHA-256 snapshot of `.cargo/config.toml` and the legacy
-  `config` in `~/.cargo`, `$CARGO_HOME`, the main checkout and every
-  directory above it or above another worktree (a missing file is a valid
-  state; only regular files are read, anything else is an error), taken in
+- watches the places outside the diff where an agent could persist, which
+  the security gate does not see: a SHA-256 snapshot of `.cargo/config.toml`
+  and the legacy `config` in `~/.cargo`, `$CARGO_HOME`, the main checkout and
+  every directory above it or above another worktree; of the sccache config
+  (`$SCCACHE_CONF` when absolute,
+  `~/Library/Application Support/Mozilla.sccache/config`,
+  `~/.config/sccache/config`); of the shared
+  `.git/config` (`core.hooksPath`, `core.fsmonitor`, ...); and one hash over
+  the git hooks folder (`git rev-parse --git-path hooks`: names, executable
+  bits and contents, names never shown). A missing file is a valid state;
+  only regular files are read, anything else is an error. It is taken in
   pre-flight by a fixed command, kept only in the orchestrator's own state
   and compared at each agent report, before each launch and before each
   "fusionne". A change, an error, or a check that cannot run holds every
@@ -163,17 +169,24 @@ Key behaviours:
   which paths changed, never their content (it may hold registry tokens),
   and the epic gets a comment with the paths only. A
   `setup-project` cache step in the same session is accepted only if the
-  snapshot matched just before it and only `~/.cargo/config.toml` changed. A
+  snapshot matched just before it and only `~/.cargo/config.toml` changed;
+  a git change you ask the orchestrator for (remote, config, hook install)
+  only if it matched before and only `.git/config` and the hooks line
+  changed. Ticket agents are told never to write to any of these places, nor
+  to push with `-u`. A
   resumed run shows you the files' sizes and dates, and any alert mentioned
   in the epic (lifted or not) waits for your own word before a new snapshot.
   A branch that touches any `.cargo` path inside the repository (any case,
   renames included), when the ticket does not ask for it, is flagged to the
   security review and to you, and not merged without your accord; the
-  snapshot is re-taken after that merge. Not watched: untracked
-  `.cargo/config*` in subfolders of the main checkout, `.git/hooks`,
-  `core.fsmonitor`, shell startup files, the sccache config. Known false
-  alert: removing the last worktree under a directory that holds a `.cargo`
-  config;
+  snapshot is re-taken after that merge. Not watched, on purpose: shell
+  start-up files (`~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.cargo/env`),
+  which you edit by hand often (false alerts); the user-level git config;
+  untracked `.cargo/config*` in subfolders of the main checkout. Known false
+  alerts: removing the last worktree under a directory that holds a `.cargo`
+  config; a merged ticket that changes tracked hooks (`core.hooksPath` inside
+  the repository); an agent's `git push -u` and the later deletion of that
+  branch;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
