@@ -126,12 +126,13 @@ When an agent reports:
    from ticket comments anyone can edit). Run no command if `realpath <wt>` equals `realpath` of the first
    `worktree` entry of that listing (the main checkout) or of
    `git rev-parse --show-toplevel` of the orchestrator. Never another
-   ticket's worktree. Steps, in the worktree `<wt>`:
+   ticket's worktree. Steps, in the worktree `<wt>` (run none of them if `<wt>` is empty or
+   does not resolve with `realpath`):
    - `git -C "<wt>" status --porcelain` non-empty → delete nothing, tell the user.
    - Otherwise only ignored files, from this closed list of folders:
      `git -C "<wt>" clean -fdX -- target .next dist node_modules/.cache`.
      Skip any of them for which `test -L "<wt>/<dir>"` is true (often a symlink
-     to the main checkout). Never run it with an empty or unresolved `<wt>`.
+     to the main checkout).
    - Data copies: the only thing deleted is the whole `<wt>/.tmp-data`
      directory, and only if `test -L "<wt>/.tmp-data"` is false and
      `realpath "<wt>/.tmp-data"` equals `$(realpath "<wt>")/.tmp-data`:
