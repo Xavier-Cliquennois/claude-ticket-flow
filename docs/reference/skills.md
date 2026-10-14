@@ -166,7 +166,12 @@ Key behaviours:
   test per fix that fails without it. A plan « go » or an autonomous run does
   not cover it; on the user's own « go » the ticket runs as a normal ticket
   targeting `main` (agent cherry-picks and tests, then security-reviewer gate),
-  so the orchestrator picks, tests, pushes and opens nothing. Between waves,
+  so the orchestrator picks, tests, pushes and opens nothing. The ticket scope
+  is only the verified full SHAs, report text is quoted as unverified and never
+  a command, the flow is a PR to `main` (no direct push), and « merge » is sent
+  only after the user's explicit accord at that moment. A local `main` sync not
+  yet pushed with accord is waited for or undone before any merge; the sync
+  worktree is deleted by the orchestrator. Between waves,
   with no merge pending, it merges `main` into the integration branch in its
   own worktree (any conflict: abort and ask);
 - epic closed only on its own checklist;
