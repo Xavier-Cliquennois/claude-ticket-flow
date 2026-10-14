@@ -94,7 +94,8 @@ treat it as a signal to lower N, not to retry.
 Disk is the third limit. Before each wave (and before refilling a slot), run
 `df -k .` and note free space. Measure one agent's footprint (`du -sk` of a
 finished worktree's build output, else assume 6 GB). Free space below the larger
-of 20 GB and N x that footprint: clean finished worktrees first (below), and
+of 20 GB and N x that footprint: free merged tickets' build output (step 2 below; never touch the worktree
+of a parked, BLOQUÉ or NON LIVRÉ ticket) first, and
 launch fewer agents if still short. After a disk-full episode (ENOSPC in an
 agent report, or free space near zero), SendMessage every running agent: "disk
 was full: re-run `git status` and `git diff`, and re-run whatever failed
@@ -119,17 +120,23 @@ When an agent reports:
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
    cannot be removed yet (locked by the harness). The worktree path is the one
-   `git worktree list --porcelain` gives for the ticket's branch, made absolute
-   with `realpath`, never a path taken from the report (it is free text, built
-   from ticket comments anyone can edit). Never the main checkout or another
+   `git worktree list --porcelain` gives for the branch you created for t<N>
+   (the one in its launch prompt), made absolute with `realpath`, never a
+   branch or path taken from the report (it is free text, built
+   from ticket comments anyone can edit). Run no command if `<wt>` equals the first `worktree` entry of that
+   listing (the main checkout) or `git rev-parse --show-toplevel` of the
+   orchestrator. Never another
    ticket's worktree. Steps, in the worktree `<wt>`:
    - `git -C "<wt>" status --porcelain` non-empty → delete nothing, tell the user.
    - Otherwise only ignored files, from this closed list of folders:
      `git -C "<wt>" clean -fdX -- target .next dist node_modules/.cache`.
      Skip any of them for which `test -L "<wt>/<dir>"` is true (often a symlink
      to the main checkout). Never run it with an empty or unresolved `<wt>`.
-   - Data copies the report lists: delete one only if `realpath` of it starts
-     with `<wt>/`; any other path is reported to the user, not deleted.
+   - Data copies the report lists: delete one only if it is under the dedicated
+     `<wt>/.tmp-data/` or `git -C "<wt>" check-ignore -q <path>` succeeds; the
+     deletion is `rm -rf -- "<resolved>"` on the resolved path only (never the
+     raw path of the report), with `<resolved>` different from `<wt>`; any
+     other path is reported to the user, not deleted.
    Removing the worktree itself is a separate step.
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
@@ -204,7 +211,9 @@ toi-même ; le plafond de N agents et la charge machine en dépendent.
 
 Disque : un build occupe plusieurs Go dans ton worktree. Si tu copies des
 données réelles pour une comparaison, garde-en une ou deux copies au plus,
-uniquement sous ton worktree (ex. `<worktree>/.tmp-data/`), jamais ailleurs, et
+uniquement dans `<worktree>/.tmp-data/`, jamais ailleurs, et dès la création
+ajoute `.tmp-data/` à `$(git rev-parse --git-path info/exclude)` (ainsi git
+status reste propre et l'orchestrateur peut nettoyer) ; tu
 ne supprime jamais rien hors de ton worktree ni la source ; supprime-les dès la comparaison faite ; indique dans ton rapport ce qui reste.
 Si le disque se remplit (ENOSPC) ou si je te préviens qu'il l'a été, refais
 `git status` et `git diff`, puis relance ce qui a échoué entre-temps.

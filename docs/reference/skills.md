@@ -112,12 +112,16 @@ Key behaviours:
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
 - checks free disk before each wave (below 20 GB or N x one agent's build
-  size: clean finished worktrees, else launch fewer agents) and reports it;
+  size: free merged tickets' build output, never a parked or blocked
+  ticket's worktree, else launch fewer agents) and reports it;
   deletes a merged ticket's build output right away, even when its worktree
   is locked: only when `git status` is clean, only ignored files in a closed
   folder list (`target`, `.next`, `dist`, `node_modules/.cache`), never a
-  symlink, always inside the worktree path from `git worktree list` (never a
-  path from the report); agents keep data copies under their own worktree; after a disk-full episode, it messages every
+  symlink, always inside the worktree of the branch the orchestrator created
+  (from `git worktree list`, never the main checkout, never a path from the
+  report); data copies only under `.tmp-data/` (agents add it to
+  `.git/info/exclude`) or git-ignored, removed with `rm -rf --` on the resolved
+  path; never when `<wt>` is the orchestrator's own checkout; agents keep data copies under their own worktree; after a disk-full episode, it messages every
   running agent to re-check `git status` / `git diff` and re-run what failed;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
