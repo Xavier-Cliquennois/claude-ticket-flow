@@ -158,7 +158,8 @@ Key behaviours:
   (`$SCCACHE_CONF` when absolute,
   `~/Library/Application Support/Mozilla.sccache/config`,
   `~/.config/sccache/config`); of the shared
-  `.git/config` (`core.hooksPath`, `core.fsmonitor`, ...); and one hash over
+  `.git/config` (`core.hooksPath`, `core.fsmonitor`, ...) and the main
+  checkout's `config.worktree`; and one hash over
   the git hooks folder (`git rev-parse --git-path hooks`: names, executable
   bits and contents, names never shown). A missing file is a valid state;
   only regular files are read, anything else is an error. It is taken in
@@ -171,9 +172,14 @@ Key behaviours:
   `setup-project` cache step in the same session is accepted only if the
   snapshot matched just before it and only `~/.cargo/config.toml` changed;
   a git change you ask the orchestrator for (remote, config, hook install)
-  only if it matched before and only `.git/config` and the hooks line
-  changed. Ticket agents are told never to write to any of these places, nor
-  to push with `-u`. A
+  is made only while no agent runs, and accepted only if it matched before
+  and only the one line that change touches (`.git/config` or the hooks
+  line) changed. Ticket agents are told never to write to any of these
+  places; worktrees are created with `--no-track` and agents push only with
+  `git push origin "<branch>"`, so no upstream lands in `.git/config`. The
+  orchestrator's cleanup and sync git commands run with
+  `-c core.hooksPath=/dev/null`, so a hook planted between two checks never
+  runs. A
   resumed run shows you the files' sizes and dates, and any alert mentioned
   in the epic (lifted or not) waits for your own word before a new snapshot.
   A branch that touches any `.cargo` path inside the repository (any case,
@@ -182,10 +188,14 @@ Key behaviours:
   snapshot is re-taken after that merge. Not watched, on purpose: shell
   start-up files (`~/.zshrc`, `~/.zprofile`, `~/.zshenv`, `~/.cargo/env`),
   which you edit by hand often (false alerts); the user-level git config;
-  untracked `.cargo/config*` in subfolders of the main checkout. Known false
+  untracked `.cargo/config*` in subfolders of the main checkout;
+  `SCCACHE_BUCKET`, `SCCACHE_ENDPOINT` or a relative `SCCACHE_CONF` set in
+  an agent's own command (a shared sccache server bound to a remote cache,
+  no watched file touched; the agent prompt forbids `SCCACHE_*`). Known false
   alerts: removing the last worktree under a directory that holds a `.cargo`
   config; a merged ticket that changes tracked hooks (`core.hooksPath` inside
-  the repository); an agent's `git push -u` and the later deletion of that
+  the repository); an upstream an agent sets anyway (`-u`, a bare
+  `git push` with `push.autoSetupRemote`) and the later deletion of that
   branch;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent

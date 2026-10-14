@@ -368,7 +368,9 @@ directory above it, each directory above every other worktree (the worktree
 itself is the repository: its tracked configs are in the diff, see the last
 bullet), the sccache config (`$SCCACHE_CONF` when absolute, and always
 `~/Library/Application Support/Mozilla.sccache/config` and
-`~/.config/sccache/config`), the shared `.git/config`, and the hooks folder
+`~/.config/sccache/config`), the shared `.git/config` and the main
+checkout's `config.worktree` (read when `extensions.worktreeConfig` is set),
+and the hooks folder
 (`git rev-parse --git-path hooks`, so `core.hooksPath` is followed). A missing
 file or hooks folder is a valid state; only a regular file (or a link to one)
 is read, anything else is `erreur` without being read. The hooks folder gives
@@ -385,8 +387,11 @@ set: the user edits them by hand often, so a check would raise false alerts
 and teach the user to wave alerts through; also the user-level git config
 (`~/.gitconfig`, `~/.config/git/config`), untracked `.cargo/config*` in
 subfolders of the main checkout, and any `include.path` file that
-`.git/config` already named at baseline (adding one changes `.git/config`).
-The agent prompt forbids writing to all of them.
+`.git/config` already named at baseline (adding one changes `.git/config`);
+and `SCCACHE_BUCKET`, `SCCACHE_ENDPOINT` or a relative `SCCACHE_CONF` set
+in an agent's own command, which start a shared sccache server bound to a
+remote cache without touching any watched file. The agent prompt forbids
+writing to all of them and setting `SCCACHE_*`.
 
 ```
 snap() { while IFS= read -r f; do
@@ -410,7 +415,7 @@ out=$({ { printf '%s\n' "$HOME/.cargo"; [ -n "$ch" ] && printf '%s\n' "$ch"; [ -
   git worktree list --porcelain | sed -n '2,$s/^worktree //p' | while IFS= read -r w; do w=$(realpath "$w" 2>/dev/null) && up "$(dirname "$w")"; done
   } | while IFS= read -r c; do r=$(realpath "$c" 2>/dev/null) || r=$c; printf '%s\n' "$r/config.toml" "$r/config"; done
   printf '%s\n' "$HOME/Library/Application Support/Mozilla.sccache/config" "$HOME/.config/sccache/config"
-  [ -n "$sc" ] && printf '%s\n' "$sc"; [ -n "$gc" ] && printf '%s\n' "$gc/config"; } | sort -u | snap
+  [ -n "$sc" ] && printf '%s\n' "$sc"; [ -n "$gc" ] && printf '%s\n' "$gc/config" "$gc/config.worktree"; } | sort -u | snap
   if [ -n "$top" ] && [ -n "$gc" ]; then k=hooks; r=$(realpath "$hp" 2>/dev/null) || r=$hp
     case "$r/" in "$gc"/*) ;; "$top"/*) k=hooks-depot ;; esac; printf '%s %s\n' "$k" "$(hk "$hp")"
   else printf '%s\n' "erreur - git"; fi)
@@ -444,9 +449,11 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
   only; an alert not lifted also goes into the closing summary. Known false
   alerts: the last worktree under a directory that holds a `.cargo` config
   is removed, so that directory leaves the list; a merged ticket that
-  changes tracked hooks (`hooks-depot`); a `git push -u` by an agent (it
-  writes a `[branch]` section into the shared `.git/config`), and later your
-  `git branch -D` of that branch (it removes it).
+  changes tracked hooks (`hooks-depot`); a branch given an upstream despite
+  `--no-track` and `git push origin "<branche>"` (a `-u`, a bare `git push`
+  with `push.autoSetupRemote`: it writes a `[branch]` section into the shared
+  `.git/config`), and later your `git branch -D` of that branch (it removes
+  it).
 - **`setup-project` in your own session** (its cache step, after the user's
   yes): run the command right before it; it must equal the baseline, else
   the bullet above applies. Right after it, run it again: if the only line
@@ -454,13 +461,16 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
   writes), keep that output as the new baseline; any other line that
   differs → the bullet above.
 - **Your own git changes** (a `git remote`, `git config` or hook install the
-  user asked you for, a `setup-project` step that touches git): the same
-  way, run the command right before (equal to the baseline, else the alert
-  bullet) and right after; if the only lines that differ are the
-  `.git/config` one and the `hooks` / `hooks-depot` one, keep that output as
-  the new baseline. The cleanup after a merge (`git worktree remove`,
-  `git branch -D`, `git push --delete`) needs no new baseline: it leaves
-  them unchanged unless an agent pushed with `-u` (above).
+  user asked you for, a `setup-project` step that touches git): only while
+  no agent is running (between waves, all slots empty); otherwise wait until
+  then. Run the command right before (equal to the baseline, else the alert
+  bullet) and right after; if the only line that differs is the one that
+  change touches (`.git/config` for a remote or a config, `hooks` /
+  `hooks-depot` for a hook install, never both), keep that output as the new
+  baseline; anything else → the alert bullet. The cleanup after a merge
+  (`git worktree remove`, `git branch -D`, `git push --delete`) needs no new
+  baseline: it leaves them unchanged unless an agent's push or worktree set
+  an upstream (above).
 - **Inside the repository**: at PRÊT À FUSIONNER, before launching
   `sec-<N>`, count the paths the branch adds, changes or deletes that have a
   `.cargo` component, in any case (the disk may ignore case), file names not
@@ -566,6 +576,9 @@ then:
        ticket.
      A report with « reste » and nothing unticked on the tracker → no
      follow-up; tell the user.
+   Every git command of this cleanup, and of the integration-branch sync
+   below, runs as `git -c core.hooksPath=/dev/null ...`: a hook planted and
+   removed between two comparisons never runs with your rights.
    Once the ticket's state above is settled, remove its worktree and branches,
    with the same `<wt>` and guards as the build output cleanup (resolved from
    the branch you created, never the main checkout, never another ticket's,
@@ -698,7 +711,7 @@ then:
    - Between waves, bring `main` into the integration branch: only when no
      « fusionne » is waiting for its FUSIONNÉ (it is a merge: one at a time, and
      send no « fusionne » meanwhile), in a worktree you create for the integration
-     branch, never by switching the branch of the main checkout. You delete that
+     branch (git hooks off, as in the cleanup above), never by switching the branch of the main checkout. You delete that
      sync worktree once the sync is done, with the guards of FUSIONNÉ. `git merge main`
      (no rebase of a shared branch). Any conflict: `git merge --abort`, write the
      question in plain text and wait, keeping the other slots busy. Pushing the
@@ -778,7 +791,7 @@ relis `gh api "repos/$repo/pulls/$pr" --jq .base.ref` : s'il diffère
 exactement de ce `base=` → BLOQUÉ, tu ne fusionnes pas (l'orchestrateur
 refuse la preuve de fusion si `base.ref` diffère et ne nettoie rien).
 
-Worktree : <commande de création (branche `<type>/<N>-<slug>`, slug = titre en minuscules, tout ce qui n'est pas [a-z0-9] devient `-`), ou celui qui existe déjà : reprends-le après avoir lu son état>.
+Worktree : <commande de création, `git worktree add --no-track ../<repo>-<N> -b <branche> <base>` (branche `<type>/<N>-<slug>`, slug = titre en minuscules, tout ce qui n'est pas [a-z0-9] devient `-`), ou celui qui existe déjà : reprends-le après avoir lu son état>.
 Ressources : <ports/base dédiés ; verrou machine ; limite de workers de test>.
 
 Processus : tu n'arrêtes que ceux que tu as lancés, par le PID noté au
@@ -844,7 +857,8 @@ N'écris dans aucun de ces endroits où l'on peut persister : ni hook git
 `chmod +x` dessus ; un fichier suivi que le ticket demande reste permis, il
 est dans le diff), ni `git config` (pas de
 `core.hooksPath`, `core.fsmonitor`, `include.path`, remote ou alias ; pousse
-sans `-u` ni `--set-upstream`), ni la config git de l'utilisateur
+seulement par `git push origin "<branche>"`, jamais `-u`, `--set-upstream`
+ni `git push` nu), ni la config git de l'utilisateur
 (`~/.gitconfig`, `~/.config/git/config`), ni la config sccache (`$SCCACHE_CONF`,
 `~/Library/Application Support/Mozilla.sccache/config`,
 `~/.config/sccache/config`), ni les fichiers de démarrage du shell

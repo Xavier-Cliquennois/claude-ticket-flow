@@ -132,7 +132,7 @@ call goes through.
   command (« Déplacer une carte »); without it, the `gh project` fallback in
   `write-ticket` §6.
 - Worktree per the CLAUDE.md convention (default
-  `git worktree add ../<repo>-<N> -b <type>/<N>-<slug>` (slug = title lowercased, every character outside
+  `git worktree add --no-track ../<repo>-<N> -b <type>/<N>-<slug>` (slug = title lowercased, every character outside
   `[a-z0-9]` becomes `-`) from the main branch,
   up to date). Work only inside it.
 - Exclusive resources the CLAUDE.md names (a benchmark, a shared database, a
