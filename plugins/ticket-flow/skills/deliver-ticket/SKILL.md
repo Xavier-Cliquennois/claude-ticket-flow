@@ -68,6 +68,20 @@ plain list of tickets), not this skill.
   outputs (`tail`, `grep`). If the ticket turns out bigger than its size, stop
   cleanly and propose a split rather than pushing through.
 
+### Processes you start
+
+Several agents run side by side on one machine; a pattern kill hits the others.
+- A server, watcher or worker you start: record its PID right away (`$!`, or the
+  PID it prints) and stop it later with `kill <that PID>` only.
+- Never `pkill -f`, `killall` or any kill by name, pattern or port: another
+  agent's process, or the user's own, can match.
+- A project that runs a local server for tests gives each instance its own port
+  and data directory (taken from your ticket number, or a free port) and prints
+  the PID. If the project does not, do it in your test setup and report it as a
+  « ticket révélé » if the fix is out of scope.
+- Never touch the ports or processes the CLAUDE.md lists as the user's own. If
+  it lists none, do not stop anything you did not start.
+
 ### Long commands
 
 A command that may run more than ~2 minutes (test suite, bench, build, data

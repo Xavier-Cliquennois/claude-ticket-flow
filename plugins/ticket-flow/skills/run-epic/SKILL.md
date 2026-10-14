@@ -161,6 +161,11 @@ En parallèle de toi : <t<M> sur <fichiers>> ; ne touche pas à leurs fichiers.
 Worktree : <commande de création, ou celui qui existe déjà : reprends-le après avoir lu son état>.
 Ressources : <ports/base dédiés ; verrou machine ; limite de workers de test>.
 
+Processus : tu n'arrêtes que ceux que tu as lancés, par le PID noté au
+lancement (`kill <PID>`) ; jamais `pkill -f`, `killall` ni kill par motif ou par
+port. Serveur de test : port et dossier de données propres à ton ticket, PID
+affiché. Ports et processus de l'utilisateur (CLAUDE.md : <liste>) : intouchables.
+
 Commandes longues (> 2 min) : en tâche de fond, sortie dans le terminal (jamais
 seulement `> log`) ; un log en plus : `set -o pipefail; <cmd> 2>&1 | tee <log>` ;
 Python : PYTHONUNBUFFERED=1.

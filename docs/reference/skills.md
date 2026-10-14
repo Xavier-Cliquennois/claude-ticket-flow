@@ -78,7 +78,7 @@ delivery skill, that one is followed instead.
 | 0. Frame | reads `## Workflow`, the ticket with its comments, blockers, an existing worktree to resume |
 | 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
 | 2. Start | board → in progress, worktree per convention, exclusive resources one at a time |
-| 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python) |
+| 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
 | 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
@@ -107,6 +107,7 @@ Key behaviours:
   human-only tickets parked;
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
 - one agent at a time on each exclusive resource;
+- ticket agents stop only the processes they started, by PID (no kill by pattern or port), so parallel test servers never kill each other;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
