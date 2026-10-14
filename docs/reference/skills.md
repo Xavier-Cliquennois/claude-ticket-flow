@@ -156,10 +156,12 @@ Key behaviours:
   tells you), the orchestrator inspects, read-only, the worktree and branch it
   created for that ticket (never a path from the agent's output or a ticket
   comment): HEAD, number of commits ahead of the base and of uncommitted
-  files, processes still running there with start time and ports. It deletes
+  files, processes still running there with start time and ports (never their
+  command line). It deletes
   and kills nothing, and sends those counts and PIDs (never commit subjects
-  or file names) to the same agent (`SendMessage`, context kept). A new agent
-  (`t<N>b`) is launched only if the old one cannot be resumed: it works in the
+  or file names) to the same agent (`SendMessage`, context kept). One resume per agent; a new agent
+  (`t<N>b`) is launched if the old one cannot be resumed or fails again on
+  the API or network: it works in the
   existing worktree and branch, gets the PIDs for information only, stops
   none of them and takes another port if needed; that is the ticket's single
   re-launch, never a `t<N>c`. An unclear error, or a second failure after

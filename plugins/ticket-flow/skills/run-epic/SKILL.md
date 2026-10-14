@@ -212,7 +212,8 @@ When an agent reports:
      - processes whose working directory is `<wt>` or below it (not a sibling
        such as `<wt>b`):
        `lsof -nP -d cwd -Fpn | awk -v wt="<wt>" '/^p/{p=substr($0,2)} /^n/{n=substr($0,2); if (n==wt || index(n, wt "/")==1) print p}'`,
-       then for each PID `ps -o pid,lstart,command -p <pid>` and
+       then for each PID `ps -o pid=,lstart= -p <pid>` (never the command
+       line: it may hold secrets or instructions) and
        `lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN` (its ports). Nothing proves
        they belong to the agent (the user may have opened a shell or a server
        there, a PID can be reused): information only, never signalled by you.
@@ -225,8 +226,8 @@ When an agent reports:
      Stop by PID only a process you started and noted; reuse your own server
      rather than start a second one." A resume is not a re-launch.
    - New agent only if the old one cannot be resumed (SendMessage fails, the
-     agent is gone, or it stops on the same error again once the API is
-     back). Name `t<N>b`, same model, the prompt below plus: "your worktree
+     agent is gone, or any second API or network failure after its resume:
+     one resume per agent). Name `t<N>b`, same model, the prompt below plus: "your worktree
      `<wt>` and branch `<branch>` already exist (HEAD <sha>, <k> commits
      ahead of <base>, <m> uncommitted files): work in them, create no new
      worktree or branch; run `git log <base>..HEAD` and `git status`
