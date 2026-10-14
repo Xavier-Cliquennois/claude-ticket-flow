@@ -172,8 +172,10 @@ Key behaviours:
   output cleanup, only a worktree it created, never the main checkout. The
   branch must match `<type>/<N>-<slug>` (slug `[a-z0-9-]`) and not be the
   default or merge-target branch. It needs a merge proof not taken from the
-  report (`GET pulls`: merged, same repo, `base.ref` exactly equal to the CLAUDE.md
-  merge target, head equal to the local branch, or
+  report (`GET pulls`: merged, same repo, `base.ref` exactly equal to the merge
+  target the orchestrator holds (CLAUDE.md flow, else the default branch; checked
+  before « fusionne » on the open PR too, and a wrong base means nothing counts
+  as delivered), head equal to the local branch, or
   `merge-base --is-ancestor`), a clean `git status`, and `lsof` available with
   empty output and exit 1. A failed or busy check stops the step, retried
   later. Then unlock if locked, `git worktree remove` without `--force`,

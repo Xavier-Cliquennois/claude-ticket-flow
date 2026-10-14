@@ -40,6 +40,12 @@ Talk to the user in their language.
   you read `gh api rate_limit`, wait for the reset, and never loop; a board
   move still limited then is done once the reset has passed (and a card an
   agent could not move is moved by you).
+- **Merge target** (one definition, used by every check below): the branch the
+  merge flow of the CLAUDE.md names, else `gh api "repos/$repo" --jq .default_branch`;
+  read once from the main checkout, held by you per ticket (a port ticket's
+  target is the default branch, from this same call, not a literal `main`),
+  never taken from a report, a comment or an agent. Every comparison with it
+  is an exact string comparison (case, no slash, no `refs/heads/`).
 - **Integration branch**: if the merge flow of the CLAUDE.md targets a branch
   other than the default one (`main`) for this epic, it is long-lived: the
   fixes and the sync of step 6 below apply. Otherwise they do not.
@@ -362,7 +368,13 @@ When an agent reports:
      note the target head (step 6), and SendMessage `t<N>`: "fusionne <SHA>", where <SHA> is that reviewed head,
      re-read with `git rev-parse refs/heads/<branch>` just before sending (the
      agent passes exactly it as the `sha` of the merge, so GitHub refuses a head
-     that moved). **One merge at a time**
+     that moved). For a PR flow, also just before sending: `owner=${repo%%/*}`
+     then `gh api -X GET "repos/$repo/pulls" -f head="$owner:<branch>" -f state=open`
+     (branch = the one you created) must give EXACTLY ONE PR whose `base.ref`
+     equals the merge target you hold for this ticket and whose `head.sha`
+     equals the re-read head. Otherwise send no « fusionne »: the ticket is
+     BLOQUÉ and you tell the user (this is what really stops a merge into
+     another branch). **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
@@ -436,14 +448,13 @@ When an agent reports:
    - Merge proof that does not come from the report, else keep everything and
      tell the user: `owner=${repo%%/*}` then `gh api -X GET "repos/$repo/pulls" -f head="$owner:<branch>" -f state=all`
      gives exactly ONE PR, with `head.ref` equal to `<branch>`, `merged_at` set, `head.repo.full_name` equal to
-     `base.repo.full_name`, a `base.ref` EXACTLY equal (string comparison: case,
-     no slash, no `refs/heads/` prefix) to the merge target you hold from the
-     project's CLAUDE.md (`main` for a port ticket; an integration branch
-     likewise), never a name read from a report or a comment, and a `head.sha`
-     equal to `git rev-parse "refs/heads/<branch>"`. A different `base.ref`:
-     delete nothing, tell the user (the agent merged into the wrong branch);
+     `base.repo.full_name`, a `base.ref` equal to the merge target you hold
+     (§0), and a `head.sha` equal to
+     `git rev-parse "refs/heads/<branch>"`. A different `base.ref`: nothing is
+     counted as delivered (no Effort line, no « merged » comment, no dependant
+     unblocked), delete nothing, tell the user (merged into the wrong branch);
      for a local merge,
-     `git merge-base --is-ancestor "<branch>" <merge target>`.
+     `git merge-base --is-ancestor "<branch>" "<merge target>"`.
    - `git -C "<wt>" status --porcelain` non-empty (checked again): delete
      nothing, tell the user. Never `--force`.
    - No process may use it: `command -v lsof` must succeed and
@@ -628,7 +639,7 @@ Périmètre : ce ticket seulement. Fichiers attendus : <liste>. Un besoin hors
 périmètre devient une ligne « ticket révélé » dans ton rapport, pas du code.
 En parallèle de toi : <t<M> sur <fichiers>> ; ne touche pas à leurs fichiers.
 
-Base de la PR : `base=<cible de fusion du CLAUDE.md, ou `main` pour un ticket de port>`,
+Base de la PR : `base=<cible de fusion que tu tiens (§0) pour ce ticket>`,
 exactement cette chaîne ; tu n'en choisis jamais une autre (l'orchestrateur
 refuse la preuve de fusion si `base.ref` diffère et ne nettoie rien).
 
