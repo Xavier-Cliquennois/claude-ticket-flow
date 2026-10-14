@@ -188,10 +188,19 @@ Key behaviours:
   `t<N>b`, is handled as BLOCKED;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
-- board kept true; the epic's wave table and Mermaid graph show each
-  ticket's status (🟡 in progress, 🧪 merged and waiting for a human check,
-  ✅ closed, ⛔ parked or blocked); follow-up and revealed tickets join them
-  live;
+- board kept true; the epic's « Vagues » section shows where each wave and
+  ticket stands: a « Statut » column per wave in the table (empty until a
+  ticket is launched, 🟡 once one is, 🧪 when all are delivered but a human
+  check is left, ✅ when all are closed, ⛔ when nothing runs and one is
+  blocked; out-of-scope tickets do not hold a wave open) and on each Mermaid
+  node the ticket's emoji plus a `classDef` colour (`#42 🟡`: 🟡 in
+  progress, 🧪 merged and waiting for a human check, ✅ closed, ⛔ parked or
+  blocked); follow-up and revealed tickets join them live. States come from
+  one paginated read of the sub-issues, and the ✅ count never exceeds
+  GitHub's. At each launch, merge or set-aside the orchestrator re-reads the
+  body just before writing and replaces only that section, rebuilt from its
+  own state: nothing in the old section is trusted, and it writes only
+  numbers, models, states, emoji and its own wave reasons (no titles);
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
   commit and list it in the report (« Fixes for main »). The orchestrator only

@@ -140,10 +140,15 @@ Linear) already shows them under the epic. A table of them would only drift.
 
 The "Vagues" section always has both the table and the Mermaid graph:
 - Table: one row per wave; "Attend" lists the tickets the wave waits for;
-  "Statut" is empty at creation.
+  "Statut" is empty at creation. As the epic runs, `run-epic` fills it with
+  🟡 (a ticket launched), 🧪 (all delivered, a human check left), ✅ (all
+  closed), ⛔ (nothing running, one blocked).
 - Graph: one node per child, id `t<N>`, label `"#<N>"`, an arrow per blocked-by
-  link (blocker → blocked). Keep the four `classDef` lines and the legend even if unused:
-  `run-epic` colours the nodes with them as the epic runs (see run-epic §2).
+  link (blocker → blocked). Only numbers in the graph, never a ticket title.
+  Keep the four `classDef` lines (yellow `enCours`, blue `aTester`, green
+  `fini`, red `bloque`) and the legend even if unused: `run-epic` turns a
+  label into `"#<N> 🟡"` and adds `class t<N> enCours` as the epic runs (see
+  "Wave status in the epic body" in run-epic §2).
 
 A **follow-up ticket** carries what a merged ticket left undone (code or tests
 not written): title « <titre d'origine> : reste <quoi> », « Contexte » says
