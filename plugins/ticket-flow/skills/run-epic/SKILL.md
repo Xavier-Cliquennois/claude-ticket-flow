@@ -91,6 +91,13 @@ below forbids it), since each one multiplies the work and the long suites. If
 timing-sensitive tests start failing for no code reason while the load is high,
 treat it as a signal to lower N, not to retry.
 
+Disk is the third limit. Before each wave (and before refilling a slot), run
+`df -k .` and note free space. Measure one agent's footprint (`du -sk` of a
+finished worktree's build output, else assume 6 GB). Free space below the larger
+of 20 GB and N x that footprint: clean finished worktrees first (below), and
+launch fewer agents if still short. Report free disk with each wave in the
+`mcp__orchestra__stage` / terminal line.
+
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
 running agent touches its files. Launch with the Agent tool:
 `run_in_background: true`, `name: "t<N>"` (so SendMessage and the panel show it),
@@ -107,7 +114,13 @@ When an agent reports:
      (`write-ticket`); then SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
-2. **FUSIONNÉ** → check the ticket's real state (`gh issue view N --json
+2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
+   cannot be removed yet (locked by the harness): delete only inside that
+   ticket's own worktree, the build directories the project builds into
+   (`target/`, `node_modules/.cache`, `.next`, `dist`, ...) and any data copies
+   its report lists. Never run it on the main checkout or another ticket's
+   worktree. Removing the worktree itself is a separate step.
+   Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
    - fermé → *(epic only)* tick the epic's line; ticket ✅.
    - à valider → ticket 🧪; it is a human's job now, tell the user what to
@@ -177,6 +190,12 @@ et pourquoi. Doc : skill project-docs, dans le même commit.
 Pas de sous-agent ni de fork : tu ne lances aucun agent à toi, quoi que le skill
 de livraison suggère (revue, exploration, tests en parallèle). Tu fais tout
 toi-même ; le plafond de N agents et la charge machine en dépendent.
+
+Disque : un build occupe plusieurs Go dans ton worktree. Si tu copies des
+données réelles pour une comparaison, garde-en une ou deux copies au plus et
+supprime-les dès la comparaison faite ; indique dans ton rapport ce qui reste.
+Si le disque se remplit (ENOSPC) ou si je te préviens qu'il l'a été, refais
+`git status` et `git diff`, puis relance ce qui a échoué entre-temps.
 
 Contexte : garde ta fenêtre légère. Lis des extraits, pas des fichiers entiers ;
 n'affiche pas de longues sorties (tail, grep). Si le ticket s'avère plus gros que

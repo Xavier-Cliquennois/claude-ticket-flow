@@ -111,6 +111,11 @@ Key behaviours:
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
+- checks free disk before each wave (below 20 GB or N x one agent's build
+  size: clean finished worktrees, else launch fewer agents) and reports it;
+  deletes a merged ticket's build output (`target/`, caches, data copies) right
+  away, even when its worktree is locked; after a disk-full episode, running
+  agents re-check `git status` / `git diff` and re-run what failed;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each
