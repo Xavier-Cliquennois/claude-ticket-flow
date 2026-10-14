@@ -95,7 +95,10 @@ Disk is the third limit. Before each wave (and before refilling a slot), run
 `df -k .` and note free space. Measure one agent's footprint (`du -sk` of a
 finished worktree's build output, else assume 6 GB). Free space below the larger
 of 20 GB and N x that footprint: clean finished worktrees first (below), and
-launch fewer agents if still short. Report free disk with each wave in the
+launch fewer agents if still short. After a disk-full episode (ENOSPC in an
+agent report, or free space near zero), SendMessage every running agent: "disk
+was full: re-run `git status` and `git diff`, and re-run whatever failed
+meanwhile (writes, tests, commits)". Report free disk with each wave in the
 `mcp__orchestra__stage` / terminal line.
 
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
