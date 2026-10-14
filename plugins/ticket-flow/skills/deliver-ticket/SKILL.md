@@ -55,7 +55,8 @@ plain list of tickets), not this skill.
   command (« Déplacer une carte »); without it, the `gh project` fallback in
   `write-ticket` §6.
 - Worktree per the CLAUDE.md convention (default
-  `git worktree add ../<repo>-<N> -b <type>/<N>-<slug>` from the main branch,
+  `git worktree add ../<repo>-<N> -b <type>/<N>-<slug>` (slug = title lowercased, every character outside
+  `[a-z0-9]` becomes `-`) from the main branch,
   up to date). Work only inside it.
 - Exclusive resources the CLAUDE.md names (a benchmark, a shared database, a
   lock): take them only when needed, one at a time, and say so.

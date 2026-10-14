@@ -142,12 +142,15 @@ Key behaviours:
   running agent to re-check `git status` / `git diff` and re-run what failed;
 - after FUSIONNÉ and the ticket state check, removes the ticket's worktree and
   branches itself (agents delete nothing): same `<wt>` and guards as the build
-  output cleanup, only a worktree it created, never the main checkout; needs a
-  merge proof not taken from the report, a clean `git status`, `lsof` available
-  and reporting no process; unlocks if locked, `git worktree remove` without
-  `--force`, then `git branch -D`, the remote branch if it exists, and
-  `git worktree prune`; fork leftovers from the report are listed to you, not
-  deleted;
+  output cleanup, only a worktree it created, never the main checkout. The
+  branch must match `<type>/<N>-<slug>` (slug `[a-z0-9-]`) and not be the
+  default or merge-target branch. It needs a merge proof not taken from the
+  report (`gh pr view`: MERGED, same repo, head equal to the local branch, or
+  `merge-base --is-ancestor`), a clean `git status`, and `lsof` available with
+  empty output and exit 1. A failed or busy check stops the step, retried
+  later. Then unlock if locked, `git worktree remove` without `--force`,
+  `git branch -D`, the remote branch if it exists, `git worktree prune`; fork
+  leftovers from the report are listed to you, not deleted;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each

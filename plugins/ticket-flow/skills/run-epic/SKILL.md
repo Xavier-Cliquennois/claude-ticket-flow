@@ -153,24 +153,30 @@ When an agent reports:
    the branch you created, never the main checkout, never another ticket's,
    nothing run if `<wt>` is empty). Skip the whole step, and tell the user, if
    you did not create this worktree for this ticket. `<branch>` is the one you
-   created for t<N> (launch prompt; its slug is only `[a-z0-9-]`), never one
-   read from the report, never the main or integration branch.
+   created for t<N> (launch prompt), never one read from the report. Refuse
+   (delete nothing, tell the user) if `<branch>` equals
+   `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` or the
+   CLAUDE.md merge target, or does not match `^[a-z]+/<N>-[a-z0-9-]+$` (N = the
+   ticket number of t<N>). A failed or "busy" check stops the bullets below;
+   retry the whole step later.
    - Merge proof that does not come from the report, else keep everything and
-     tell the user: `gh pr view "<branch>" --json state` is `MERGED`, or
+     tell the user: `gh pr view "<branch>" --json state,headRefOid,isCrossRepository`
+     gives `MERGED`, `isCrossRepository` false and a `headRefOid` equal to
+     `git rev-parse "refs/heads/<branch>"`; for a local merge,
      `git merge-base --is-ancestor "<branch>" <merge target>`.
    - `git -C "<wt>" status --porcelain` non-empty (checked again): delete
      nothing, tell the user. Never `--force`.
    - No process may use it: `command -v lsof` must succeed and
-     `lsof +D "<wt>"` must exit 1 with empty output; any other result is
-     "busy": leave the worktree, retry when the agent's last background task
-     ends. Never kill a process.
+     `out=$(lsof +D "<wt>" 2>&1)` must exit 1 with `$out` empty (stdout and
+     stderr); any other result is "busy". Never kill a process.
    - `git worktree list --porcelain` shows `locked` for `<wt>` → `git worktree
      unlock "<wt>"`, only once the checks above pass.
    - `git worktree remove "<wt>"` (no `-f`). If it fails, leave it and tell the user.
    - From the main checkout: `git branch -D -- "<branch>"` (`-D`: the rebase
-     changed the SHAs), then, if `git ls-remote --exit-code --heads origin
-     "<branch>"` finds it, `git push origin --delete -- "<branch>"`, then
-     `git worktree prune`. The agent itself deletes neither (`deliver-ticket` §7).
+     changed the SHAs), then, if `git ls-remote --exit-code origin
+     "refs/heads/<branch>"` finds it and the same merge proof holds,
+     `git push origin --delete -- "<branch>"`, then `git worktree prune`. The
+     agent itself deletes neither (`deliver-ticket` §7).
    - Worktrees and branches left by forks or sub-agents, listed at the end of
      the report, are free text: tell the user, delete nothing from that list.
    *(epic only)* Update the "Vagues" table and graph, comment the epic with one
@@ -214,7 +220,7 @@ Périmètre : ce ticket seulement. Fichiers attendus : <liste>. Un besoin hors
 périmètre devient une ligne « ticket révélé » dans ton rapport, pas du code.
 En parallèle de toi : <t<M> sur <fichiers>> ; ne touche pas à leurs fichiers.
 
-Worktree : <commande de création, ou celui qui existe déjà : reprends-le après avoir lu son état>.
+Worktree : <commande de création (branche `<type>/<N>-<slug>`, slug = titre en minuscules, tout ce qui n'est pas [a-z0-9] devient `-`), ou celui qui existe déjà : reprends-le après avoir lu son état>.
 Ressources : <ports/base dédiés ; verrou machine ; limite de workers de test>.
 
 Processus : tu n'arrêtes que ceux que tu as lancés, par le PID noté au
