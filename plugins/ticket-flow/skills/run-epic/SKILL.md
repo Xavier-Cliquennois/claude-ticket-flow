@@ -31,7 +31,7 @@ Talk to the user in their language.
   `subIssues` / `blockedBy`; or the Linear MCP).
 - **Integration branch**: if the merge flow of the CLAUDE.md targets a branch
   other than the default one (`main`) for this epic, it is long-lived: the
-  fixes and the sync of step 5 below apply. Otherwise they do not.
+  fixes and the sync of step 6 below apply. Otherwise they do not.
 - `git worktree list` and existing branches: a worktree for a ticket means work
   in progress to resume, not to recreate.
 - Machine: `vm_stat` (free memory) and `ps` for heavy processes already running.
@@ -119,7 +119,7 @@ When an agent reports:
      comment and tell the user.
    - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
      (`write-ticket`); then, on an integration branch, note the target head
-     (step 5), and SendMessage `t<N>`: "fusionne". **One merge at a time**
+     (step 6), and SendMessage `t<N>`: "fusionne". **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
@@ -245,7 +245,7 @@ When an agent reports:
    above). In an autonomous run, launch a revealed ticket only if the epic cannot close
    without it.
 
-5. **Fixes that also concern main** (integration branch only). The orchestrator
+6. **Fixes that also concern main** (integration branch only). The orchestrator
    only PROPOSES; it cherry-picks, tests and opens nothing itself.
    - Before each « fusionne », note the head of the target branch (`git rev-parse
      <target>`). After the FUSIONNÉ, the fixes of that ticket are read only in the
@@ -403,5 +403,5 @@ delivered with merge commits, what is parked and why, revealed tickets, the epic
 own "Fini quand" box by box). List every 🧪 ticket with what to check and who, and every ticket created
 during the run still « à assigner ». Close the epic only if its own boxes are honestly
 ticked: a parent never closes just because its children did. Integration branch: list the fixes still not on `main`
-and repeat the proposal of step 5 (propose only). Then tell the user, in
+and repeat the proposal of step 6 (propose only). Then tell the user, in
 a few lines, what needs them (parked tickets, decisions, human checks).
