@@ -22,6 +22,7 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 | 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups | yes |
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
+| 5. Finish | what was created, what changed, what is left to you | — |
 
 ### move-card
 
@@ -42,7 +43,6 @@ sits on several boards; `--field` defaults to `Status`; `--dry-run` does the
 lookup and changes nothing. Arguments are validated and reach GitHub only as
 GraphQL variables. Exit codes: 0 done, 1 bad usage, 2 card, field or option
 not found (the message lists the options), 3 GitHub API failure.
-| 5. Finish | what was created, what changed, what is left to you | — |
 
 ## write-ticket
 

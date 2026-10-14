@@ -85,9 +85,11 @@ group through the Linear MCP, only after a yes.
 
 For a GitHub Project board, install the card mover, after the same yes: copy
 `${CLAUDE_PLUGIN_ROOT}/scripts/move-card` to `.claude/scripts/move-card` in the
-project and make it executable (if the variable is not expanded, the plugin
-lives under `~/.claude/plugins/`: `ls ~/.claude/plugins/cache/*/ticket-flow/*/scripts/move-card`,
-take the newest version). On an upgrade, replace a copy that differs from the
+project and make it executable. If the variable is not expanded, take the
+newest version under this marketplace only:
+`ls ~/.claude/plugins/cache/claude-ticket-flow/ticket-flow/*/scripts/move-card`
+(never another marketplace's `ticket-flow`). Show the user the source path
+before copying. On an upgrade, replace a copy that differs from the
 plugin's and say so. Check it with a dry run on any issue already on the board
 (`.claude/scripts/move-card --dry-run --repo <owner>/<repo> --project <n> <N> "<option>"`):
 it reads the card from the issue (about 1 GraphQL point whatever the board size)
