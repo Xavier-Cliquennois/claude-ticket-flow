@@ -85,7 +85,11 @@ it back (`gh issue edit E --body-file <tmp>`, or the Linear MCP).
   a new row at the end. Renumber nothing: a new row can be « 3 bis ».
 
 Keep a slot table: at most N running agents, and at most one agent holding each
-exclusive resource the CLAUDE.md names.
+exclusive resource the CLAUDE.md names. Agent count is not the only limit: machine
+load is. Ticket agents never launch sub-agents or forks of their own (the prompt
+below forbids it), since each one multiplies the work and the long suites. If
+timing-sensitive tests start failing for no code reason while the load is high,
+treat it as a signal to lower N, not to retry.
 
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
 running agent touches its files. Launch with the Agent tool:
@@ -165,6 +169,10 @@ Vérifier : <commandes>. Navigateur (si UI) : Chrome d'abord ; si Chrome n'est p
 joignable ou échoue 2-3 fois, Playwright ; sinon écris « test navigateur NON FAIT »
 et pourquoi. Doc : skill project-docs, dans le même commit.
 
+Pas de sous-agent ni de fork : tu ne lances aucun agent à toi, quoi que le skill
+de livraison suggère (revue, exploration, tests en parallèle). Tu fais tout
+toi-même ; le plafond de N agents et la charge machine en dépendent.
+
 Contexte : garde ta fenêtre légère. Lis des extraits, pas des fichiers entiers ;
 n'affiche pas de longues sorties (tail, grep). Si le ticket s'avère plus gros que
 prévu, arrête-toi proprement et propose un découpage plutôt que de tout faire.
@@ -187,6 +195,7 @@ Navigateur : Chrome | Playwright | NON FAIT (raison)
 Doc : mise à jour (fichiers) | aucune concernée
 Suite : fermé | à valider (quoi vérifier, qui) | reste (code) : cases non faites
 Tickets révélés : titre + une ligne chacun
+Sous-agents/forks lancés malgré l'interdiction (worktrees + branches à nettoyer) : aucun | liste
 Risques / ce que je n'ai pas pu vérifier :
 ```
 

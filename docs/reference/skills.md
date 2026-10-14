@@ -87,6 +87,9 @@ Key behaviours:
   human-only tickets parked;
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
 - one agent at a time on each exclusive resource;
+- ticket agents never launch sub-agents or forks; if one did, its report
+  lists their worktrees and branches for cleanup. Load, not only agent
+  count, is the limit: flaky timing tests under load mean lowering N;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each
