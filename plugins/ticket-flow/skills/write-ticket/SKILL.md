@@ -195,7 +195,9 @@ Rules:
   `blocked_by` link of #N whose blocker is still open (a closed blocker blocks
   nothing). A dependency named only in the report is not linked: it is quoted
   and told to the user.
-- Only once #N's merge is proved: create it, then in #N replace each moved
+- Only once #N's merge is proved, and only if #N is still `OPEN` with no
+  « suite dans #M » comment and no « Suite de #N » sub-issue in the epic
+  (otherwise create nothing and tell the user): create it, then in #N replace each moved
   box by `- [x] ~~<case>~~ → déplacée vers #M`, comment « suite dans #M » and
   close #N (or « à valider » if a manual check remains).
 

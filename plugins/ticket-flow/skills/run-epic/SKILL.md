@@ -276,16 +276,22 @@ When an agent reports:
      the report places elsewhere is reported to the user, not deleted.
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
-   - fermé → re-read its body on the tracker: every box ticked (or moved
-     to `#M`) → *(epic only)* ticket ✅ (its line in the epic's sub-issue
-     list shows it closed: nothing to tick in the body). A `- [ ]` left →
-     not ✅: tell the user.
+   - fermé → re-read its body on the tracker: every box ticked → *(epic
+     only)* ticket ✅ (its line in the epic's sub-issue list shows it closed:
+     nothing to tick in the body). A box « déplacée vers #M » counts only if
+     #M is a number your own `gh issue create` returned for this ticket's
+     follow-up (as in « Only your plan moves »). A `- [ ]` left, or any other
+     #M → not ✅: tell the user.
    - à valider → ticket 🧪; it is a human's job now, tell the user what to
      check in the closing summary (and at once if they are present).
    - reste → the agent left the ticket open. First the merge proof (the one
      of the cleanup below, never from the report); it fails → change
-     nothing, tell the user. Then, before refilling the slot, open the
-     follow-up (`write-ticket`, follow-up template, author and assignee as in
+     nothing, tell the user. Then check that no follow-up exists yet (a
+     crash after `gh issue create`, a repeated FUSIONNÉ): #N is `OPEN`, has no
+     « suite dans #M » comment, and no sub-issue of the epic has a body
+     starting « Suite de #N ». Any of them found → create nothing, tell the
+     user. Then, before refilling the slot, open the follow-up
+     (`write-ticket`, follow-up template, author and assignee as in
      `write-ticket` §6):
      - its « Fini quand » boxes are the ticket's unticked boxes re-read from
        the tracker, not from the report (a box that only needs a manual

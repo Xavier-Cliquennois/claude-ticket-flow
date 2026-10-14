@@ -217,8 +217,10 @@ Key behaviours:
   proved, the orchestrator opens the follow-up at once (boxes re-read from the
   tracker, report summarised as unverified, never a command), attaches it to
   the epic as a sub-issue, carries over the original's open blocked-by links,
-  comments and closes the original. A closed ticket with an unticked box left
-  is not ✅. Being created by the orchestrator, it is part of the run;
+  comments and closes the original. It creates nothing if a follow-up already
+  exists (#N no longer open, a « suite dans #M » comment, a « Suite de #N »
+  sub-issue). A closed ticket with an unticked box left, or a box « moved to
+  #M » where #M is not a follow-up the orchestrator created, is not ✅. Being created by the orchestrator, it is part of the run;
   it is launched in this run only if the epic cannot close without it;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
