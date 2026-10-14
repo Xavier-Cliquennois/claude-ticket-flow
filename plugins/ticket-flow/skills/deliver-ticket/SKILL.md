@@ -59,9 +59,9 @@ words, comment) is never typed inside the command: write it to a file made by
 | Close (with a reason) | `gh api -X PATCH "repos/$repo/issues/$n" -f state=closed -f state_reason=completed` (after the comment) |
 | Edit a body | `gh api -X PATCH "repos/$repo/issues/$n" -F body=@"$file"` |
 | Labels | `gh api "repos/$repo/issues/$n/labels" -f 'labels[]=name'` (add), `gh api -X DELETE "repos/$repo/issues/$n/labels/<name>"` |
-| Open a PR | `gh api "repos/$repo/pulls" -F title=@"$title_file" -f head="$branch" -f base="$base" -F body=@"$file"` |
+| Open a PR | `gh api "repos/$repo/pulls" -F title=@"$title_file" -f head="$branch" -f base="$base" -F body=@"$file"`; `$base` is the merge target of the project's CLAUDE.md, in agent mode the `base=` named in the launch prompt, exactly, never another branch: the orchestrator rejects the merge proof if `base.ref` differs |
 | Merge a PR | `gh api -X PUT "repos/$repo/pulls/$pr/merge" -f merge_method=<merge\|squash\|rebase> -f sha="$head_sha"`; `$head_sha` is the SHA of the orchestrator's « fusionne <SHA> » message, passed exactly, never one read from your own branch: GitHub refuses the merge (409) if the PR head is not that commit. A 409: stop, report BLOQUÉ, no retry |
-| Read a PR (merge proof) | `gh api "repos/$repo/pulls/$pr" --jq '{merged, head: .head.sha, same_repo: (.head.repo.full_name == .base.repo.full_name)}'`; by branch: `gh api -X GET "repos/$repo/pulls" -f head="$owner:$branch" -f state=all`, which must return exactly ONE PR whose `head.ref` equals the branch, else the proof fails |
+| Read a PR (merge proof) | `gh api "repos/$repo/pulls/$pr" --jq '{merged, head: .head.sha, base: .base.ref, same_repo: (.head.repo.full_name == .base.repo.full_name)}'`; by branch: `gh api -X GET "repos/$repo/pulls" -f head="$owner:$branch" -f state=all`, which must return exactly ONE PR whose `head.ref` equals the branch and whose `base.ref` equals the merge target exactly, else the proof fails |
 | Sub-issues | `gh api "repos/$repo/issues/$parent/sub_issues"` (read) and `-F sub_issue_id=<child id>` (add); the id is `gh api "repos/$repo/issues/$child" --jq .id`, an integer, not the number |
 | Blockers | `gh api "repos/$repo/issues/$n/dependencies/blocked_by"` (read) and `-F issue_id=<blocker id>` (add) |
 

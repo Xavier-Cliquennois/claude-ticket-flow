@@ -436,8 +436,13 @@ When an agent reports:
    - Merge proof that does not come from the report, else keep everything and
      tell the user: `owner=${repo%%/*}` then `gh api -X GET "repos/$repo/pulls" -f head="$owner:<branch>" -f state=all`
      gives exactly ONE PR, with `head.ref` equal to `<branch>`, `merged_at` set, `head.repo.full_name` equal to
-     `base.repo.full_name`, and a `head.sha` equal to
-     `git rev-parse "refs/heads/<branch>"`; for a local merge,
+     `base.repo.full_name`, a `base.ref` EXACTLY equal (string comparison: case,
+     no slash, no `refs/heads/` prefix) to the merge target you hold from the
+     project's CLAUDE.md (`main` for a port ticket; an integration branch
+     likewise), never a name read from a report or a comment, and a `head.sha`
+     equal to `git rev-parse "refs/heads/<branch>"`. A different `base.ref`:
+     delete nothing, tell the user (the agent merged into the wrong branch);
+     for a local merge,
      `git merge-base --is-ancestor "<branch>" <merge target>`.
    - `git -C "<wt>" status --porcelain` non-empty (checked again): delete
      nothing, tell the user. Never `--force`.
@@ -622,6 +627,10 @@ ticket-flow:deliver-ticket> en mode agent : ce prompt prime là où il en dit pl
 Périmètre : ce ticket seulement. Fichiers attendus : <liste>. Un besoin hors
 périmètre devient une ligne « ticket révélé » dans ton rapport, pas du code.
 En parallèle de toi : <t<M> sur <fichiers>> ; ne touche pas à leurs fichiers.
+
+Base de la PR : `base=<cible de fusion du CLAUDE.md, ou `main` pour un ticket de port>`,
+exactement cette chaîne ; tu n'en choisis jamais une autre (l'orchestrateur
+refuse la preuve de fusion si `base.ref` diffère et ne nettoie rien).
 
 Worktree : <commande de création (branche `<type>/<N>-<slug>`, slug = titre en minuscules, tout ce qui n'est pas [a-z0-9] devient `-`), ou celui qui existe déjà : reprends-le après avoir lu son état>.
 Ressources : <ports/base dédiés ; verrou machine ; limite de workers de test>.
