@@ -59,6 +59,10 @@ only what you could not infer:
   local `--no-ff` merge without PR. Propose what git history shows.
 - Max parallel agents for `run-epic` (default 3; lower if benches or CI share the
   machine) and anything that must never run twice at once (heavy bench, OCR, CI lock).
+- The user's own ports and processes that agents must never touch or stop (a dev
+  server, a database, a tunnel they keep running): ask for them explicitly, even
+  if the answer is « none ». Agents give their own test servers a separate port
+  and stop only processes they started.
 - Domain labels specific to this project, if the user wants some.
 
 ## 3. Create what was approved
@@ -138,6 +142,7 @@ section is older. Upgrading a section brings it to that number.
 ### Épics
 - Lancés avec le skill `run-epic`, par vagues, **<N> agents en parallèle au maximum**.
 - <ce qui ne doit jamais tourner deux fois en même temps>
+- Ports et processus de l'utilisateur, à ne jamais toucher ni arrêter : <ports, ex. 3000 (serveur de dev), 5432 (base) | aucun>. Un agent donne à ses serveurs de test un port à lui et n'arrête que les processus qu'il a lancés.
 ```
 
 ## 4b. Documentation

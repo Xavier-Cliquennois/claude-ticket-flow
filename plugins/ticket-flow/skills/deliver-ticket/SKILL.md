@@ -51,7 +51,9 @@ plain list of tickets), not this skill.
 
 ## 2. Start
 
-- Board: move the ticket to « en cours » (`write-ticket` §6 for the commands).
+- Board: move the ticket to « en cours » with the CLAUDE.md's `move-card`
+  command (« Déplacer une carte »); without it, the `gh project` fallback in
+  `write-ticket` §6.
 - Worktree per the CLAUDE.md convention (default
   `git worktree add ../<repo>-<N> -b <type>/<N>-<slug>` from the main branch,
   up to date). Work only inside it.
@@ -165,7 +167,7 @@ shows it live:
   tick the box with their words as proof, comment, close, board → « fini »,
   epic node → ✅. A failed check is a bug on the ticket: say what failed in a
   comment, reopen the work (or a follow-up ticket if the code is merged).
-- Board to match. Direct mode, ticket in an epic whose body has a « Vagues »
+- Board to match (`move-card`, as in step 2). Direct mode, ticket in an epic whose body has a « Vagues »
   section: update its node and wave cell as `run-epic` §2 says (agent mode: the
   orchestrator does it).
 - Revealed tickets → create them with `write-ticket` (sub-issue of the parent

@@ -18,7 +18,7 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 | Step | Does | Asks first? |
 |---|---|---|
 | 1. Inspect | git status and history, remote, `gh repo view`, labels, recent issues, GitHub Projects (`gh project list`, `field-list`), Linear MCP, `CLAUDE.md` / `AGENTS.md` / copilot instructions, `.claude/` hooks and skills, CI workflows, stack and verify commands, project memory notes | no (read-only) |
-| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, project labels | — |
+| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, your own ports and processes agents must never touch, project labels | — |
 | 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups | yes |
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
@@ -62,7 +62,7 @@ this", tickets revealed during a delivery.
    always asked), writes « Créé par : @login » in the body
    ([why](tickets-and-labels.md#author-and-assignee)), then `gh issue create`, sub-issue and blocked-by links through GraphQL
    (`addSubIssue`, `addBlockedBy`), board item and fields
-   (`gh project item-add`, `item-edit`), or Linear `save_issue` with `parentId`.
+   (`gh project item-add`, Status through `move-card` when the CLAUDE.md names it, `item-edit` as fallback and for other fields), or Linear `save_issue` with `parentId`.
 6. **Announce**: number, title, labels, assignee, and "next" or "not urgent".
 
 ## deliver-ticket
@@ -77,7 +77,7 @@ delivery skill, that one is followed instead.
 |---|---|
 | 0. Frame | reads `## Workflow`, the ticket with its comments, blockers, an existing worktree to resume |
 | 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
-| 2. Start | board → in progress, worktree per convention, exclusive resources one at a time |
+| 2. Start | board → in progress (`move-card` from the CLAUDE.md, `gh project` fallback), worktree per convention, exclusive resources one at a time |
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |

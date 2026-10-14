@@ -182,14 +182,18 @@ GitHub:
 
 GitHub Project (when the CLAUDE.md names a board): add every created issue,
 epic included, and set its fields.
-- `gh project item-add <n> --owner <owner> --url <issue url> --format json` →
-  the item `id` (idempotent: on an issue already there it returns the existing item,
-  so it is also how to find an issue's item).
-- Ids once per run: project id from `gh project view <n> --owner <owner> --format json`,
-  field and option ids from `gh project field-list <n> --owner <owner> --format json`.
-- `gh project item-edit --id <item> --project-id <pid> --field-id <fid> --single-select-option-id <oid>`:
-  Status = the board's « à faire » option (« bloqué » if it has an open blocker),
-  plus the custom fields the CLAUDE.md lists (e.g. Phase).
+- Add: `gh project item-add <n> --owner <owner> --url <issue url>` (idempotent:
+  on an issue already there it returns the existing item).
+- Status: when the CLAUDE.md names `move-card` (« Déplacer une carte »), use
+  exactly that command, never `gh project item-list` to find a card:
+  `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"`.
+  Status = the board's « à faire » option (« bloqué » if it has an open
+  blocker). It costs about 2 GraphQL points whatever the board size.
+- Custom fields the CLAUDE.md lists (e.g. Phase), and Status on a project that
+  does not name `move-card`, fall back to the `gh project` commands: ids once
+  per run (`gh project view <n> --owner <owner> --format json`, `gh project
+  field-list <n> --owner <owner> --format json`), then `gh project item-edit
+  --id <item> --project-id <pid> --field-id <fid> --single-select-option-id <oid>`.
 
 Linear: `save_issue` through the Linear MCP with the same body, `assignee`, labels from the
 "Modèle IA" and "Taille" groups, `parentId` for children, `relatedTo` for

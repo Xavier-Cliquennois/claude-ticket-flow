@@ -28,6 +28,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Merge flow (PR to main / PR to `dev` then release / local `--no-ff`) | deliver-ticket, run-epic | what git history suggests |
 | Max parallel agents | run-epic | 3 |
 | Exclusive resources (never two at once) | deliver-ticket, run-epic | none |
+| The user's own ports and processes agents must never touch or stop (`setup-project` asks, « none » is a valid answer) | deliver-ticket, run-epic | none protected; agents still stop only processes they started |
 | Project delivery skill, if any | deliver-ticket (defers to it), run-epic | `deliver-ticket` |
 | Docs location and rule | project-docs | `docs/`, same-commit rule |
 
@@ -67,6 +68,8 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Run with `run-epic`, in waves, **2 agents in parallel at most** (CI runs on
   this machine).
 - Never two at once: `npm run e2e` (shared database).
+- Never touch or stop my own ports: 3000 (dev server), 5432 (database). An
+  agent gives its test servers a port of its own.
 
 ### Documentation
 - Docs live in `docs/` and follow `project-docs`; a change that makes a doc
