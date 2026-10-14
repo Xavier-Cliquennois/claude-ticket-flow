@@ -239,16 +239,20 @@ Key behaviours:
   total and one total per domain. Agent figures come only from the usage the
   harness adds to the completion notifications of the agents the
   orchestrator launched for the ticket (`t<N>`, `t<N>b`, `sec-<N>`), never
-  from report text (a figure found twice or not an integer shows `?`, and
-  the total says « partiel »); lines come from the ticket's PR via the REST
-  API (PR number from its own `gh pr view` of the branch it created) or, for
+  from report text, one notification per launch or SendMessage it made (a
+  figure found twice, not an integer of at most 12 digits, or an extra
+  notification shows `?`, and the total says « partiel »); lines come from the ticket's PR via the REST
+  API (PR number from its own REST merge proof of the branch it created) or, for
   a local merge, from `git diff --numstat` over the range that merge added.
   The figures are kept in `<git common dir>/ticket-flow/effort-<E>.tsv`
-  (never committed, re-validated on a resumed run). Domains come from the
+  (`<E>` checked as an integer, created under `umask 077`, never committed,
+  refused if the folder or file is a symlink, re-validated line by line on a
+  resumed run, the agent column tied to the line's ticket). Domains come from the
   epic's optional `## Domaines` section, read in pre-flight and fixed by the
   plan's go, treated as untrusted: names limited to unaccented letters,
   digits, spaces and `-` (30 characters, 20 domains), only the plan's
-  tickets. A fixed note says what is not counted (orchestration, sub-agents
+  tickets; a name shaped like a ticket id, a hex string of 7 characters or
+  more, `sans domaine` or `Total` is dropped. A fixed note says what is not counted (orchestration, sub-agents
   and forks an agent spawned) and that parallel agents' durations add up
   while the calendar does not. List mode shows the table in the closing
   summary;

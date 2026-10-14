@@ -160,7 +160,8 @@ The "Vagues" section always has both the table and the Mermaid graph:
 "Domaines" (optional) groups the children for the Effort totals: one line
 `- <nom> : #N, #M` per domain, the name in letters without accents, digits,
 spaces and `-` only (at most 30 characters, 20 domains), each child in one
-domain at most. Leave it out and the totals are global only.
+domain at most. Not a ticket id (`ABC-12`), not a hex string of 7 characters
+or more, not `sans domaine` nor `Total`: `run-epic` drops such names. Leave it out and the totals are global only.
 
 ### Follow-up template (« suite de #N »)
 

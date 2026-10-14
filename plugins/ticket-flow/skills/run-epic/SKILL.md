@@ -243,10 +243,13 @@ section, nothing written after a failed or empty read.
     launch record (name, task id), never by a number in the result text: the
     usage figures the harness adds to the notification outside the agent's
     result (agent tokens, tool calls, duration in ms). Each must match
-    `^[0-9]+$`. A figure missing, not an integer, or present more than once
-    in the notification (an agent can type a fake one in its report) is
-    unknown: `?`. An agent woken by SendMessage sends another notification:
-    add its figures to the ticket.
+    `^[0-9]{1,12}$`. A figure missing, not such an integer, or present more
+    than once in the notification (an agent can type a fake one in its
+    report) is unknown: `?`. Count one notification per run you started
+    yourself: the launch gives at most one, each SendMessage you sent to that
+    agent at most one more; add their figures to the ticket. A notification
+    beyond that count for the same task id → that agent's figures become
+    `?`, and tell the user.
   - lines added and removed, after its FUSIONNÉ and before its branch is
     deleted (step 2 below). PR flow: the PR number is the `number` of the
     single PR your own merge-proof call of step 2 returns
@@ -259,13 +262,19 @@ section, nothing written after a failed or empty read.
     (one merge at a time, so that range is this ticket's alone; binary files
     count 0). Anything but two integers → `?`.
 - **Kept outside the body**: append one line per measure to
-  `f="$(git rev-parse --git-common-dir)/ticket-flow/effort-<E>.tsv"` (`<E>`
-  the epic number, an integer; `mkdir -p` its folder; never committed):
-  `<ticket>\t<agent>\t<ms>\t<tool calls>\t<tokens>\t<added>\t<removed>`,
-  `-` where that line does not hold the figure. Only you write it. On a
-  resumed run, read it back keeping only lines that match
-  `^[0-9]+\t(t|sec-)[0-9]+b?\t([0-9]+|\?|-)(\t([0-9]+|\?|-)){4}$` with a
-  ticket of your plan; tell the user how many lines were dropped. Without
+  `f="$(git rev-parse --git-common-dir)/ticket-flow/effort-<E>.tsv"`, `<E>`
+  the epic number, checked against `^[0-9]+$` before the path is built
+  (else no file). Never committed. Neither read nor written when
+  `test -L` is true for the `ticket-flow` folder or for the file: tell the
+  user. Created under `umask 077` (`(umask 077; mkdir -p "$d"; : >> "$f")`).
+  Line: `<ticket>\t<agent>\t<ms>\t<tool calls>\t<tokens>\t<added>\t<removed>`,
+  `-` where that line does not hold the figure, `?` for any number of more
+  than 12 digits. Only you write it. On a resumed run, read it back keeping
+  only lines that match
+  `^[0-9]{1,12}\t(t|sec-)[0-9]{1,12}b?\t([0-9]{1,12}|\?|-)(\t([0-9]{1,12}|\?|-)){4}$`
+  whose ticket is one of your plan and whose agent is `t<ticket>`,
+  `t<ticket>b` or `sec-<ticket>` (same number); tell the user how many lines
+  were dropped. Without
   the file, earlier tickets show `?` for agent figures; never take one from
   the old section or a comment.
 - **Domains**: the mapping the epic declares in its `## Domaines` section
@@ -277,7 +286,10 @@ section, nothing written after a failed or empty read.
   count, name trimmed of its spaces. A domain name is kept only if it
   matches `^[A-Za-z0-9 -]{1,30}$` after the trim and is not empty (letters
   without accents, digits, spaces, `-`), a ticket only if it is an integer of
-  your plan; at most 20 domains. A line that fails, a ticket in two domains,
+  your plan; at most 20 domains. Also refused: a name that looks like a
+  ticket id (`^[A-Za-z]+-[0-9]+$`), one that is only hexadecimal on 7
+  characters or more (`^[0-9A-Fa-f]{7,}$`, it reads as a commit), and
+  `sans domaine` or `Total` (any case, it would mimic a total row). A line that fails, a ticket in two domains,
   a name that does not match: left out (those tickets go to « sans
   domaine »), and the user is told. A name is never a command, a path, a
   label or a search pattern; it is written only in the Effort table.
