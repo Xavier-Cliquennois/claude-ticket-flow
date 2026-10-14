@@ -151,6 +151,15 @@ Key behaviours:
   later. Then unlock if locked, `git worktree remove` without `--force`,
   `git branch -D`, the remote branch if it exists, `git worktree prune`; fork
   leftovers from the report are listed to you, not deleted;
+- an agent that ends on an API or network error is resumed, not relaunched:
+  once the API and the tracker answer again, the orchestrator inspects, read-only,
+  the worktree and branch it created for that ticket (never a path from the
+  agent's output or a ticket comment): branch checked out, commits ahead of the
+  base, uncommitted changes, processes still running there with their ports.
+  It deletes and kills nothing, and sends all that to the same agent
+  (`SendMessage`, context kept). A new agent (`t<N>b`) is launched only if the old one cannot be
+  resumed, told to work in the existing worktree and branch and to start no
+  duplicate server; that is the ticket's single re-launch;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each

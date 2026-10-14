@@ -187,10 +187,48 @@ When an agent reports:
    line (ticket, merge commit, what it changed, follow-up if any). Launch
    whatever is now unblocked to refill the slot. A ticket in 🧪 unblocks its
    dependants: its code is merged.
-3. **BLOQUÉ / NON LIVRÉ** → comment the ticket with the reason, park it, refill the
+3. **Ended on an API or network error** (no ÉTAT line, and the agent's last
+   output is an API or connection failure: `Can't reach the API server`,
+   `ENOTFOUND`, `ECONNRESET`, `overloaded`, a 5xx) → the work is usually
+   intact; do not relaunch from scratch, do not park.
+   - Connectivity: your own turn running proves the API is back; also check
+     the tracker (`gh api rate_limit`, or one Linear MCP read). Still down →
+     keep its slot, wait, check again later; launch nothing meanwhile.
+   - Inspect its worktree, **read-only, nothing deleted or killed at this
+     step**. Branch and worktree are the ones you created for t<N> (its launch
+     prompt), resolved as in FUSIONNÉ above (`git worktree list --porcelain`,
+     `realpath`, never the main checkout, never a path or branch from the
+     agent's output or a ticket comment); `<wt>` empty or unresolved → skip to
+     a new agent below. Then:
+     - `git -C "<wt>" rev-parse --abbrev-ref HEAD` (should be its branch;
+       report any difference, change nothing);
+     - commits ahead: `git -C "<wt>" log --oneline <base>..HEAD`, `<base>`
+       being the branch it was launched from;
+     - uncommitted work: `git -C "<wt>" status --porcelain`;
+     - processes left running, PIDs whose working directory is `<wt>` or
+       below it (not a sibling such as `<wt>b`):
+       `lsof -nP -d cwd -Fpn | awk -v wt="<wt>" '/^p/{p=substr($0,2)} /^n/{n=substr($0,2); if (n==wt || index(n, wt "/")==1) print p}'`,
+       then for each PID `lsof -nP -a -p <pid> -iTCP -sTCP:LISTEN` (its
+       ports). These PIDs are only reported, never signalled by you.
+   - Resume the **same** agent: SendMessage to `t<N>` (it keeps its context),
+     not a new Agent call. Message: "the API was unreachable, it is back.
+     Resume where you stopped. Found in your worktree: <commits ahead>,
+     <uncommitted files>, <PID + ports of each running process>. Read your
+     background tasks' output (test runs) before re-running anything; reuse
+     or stop (by PID) your own server instead of starting a second one."
+     A resume is not a re-launch: it does not count against the limit below.
+   - New agent only if the old one cannot be resumed (SendMessage fails or
+     the agent is gone, or it stops on the same error twice once the API is
+     back). Name `t<N>b`, same model, the prompt below with the previous
+     context and these lines: "your worktree `<wt>` and branch `<branch>`
+     already exist, with <what was found>: work in them, create no new
+     worktree or branch; the processes <PIDs + ports> were left by the
+     previous agent: stop them by PID or reuse them, start no duplicate."
+     This one counts as the ticket's single re-launch.
+4. **BLOQUÉ / NON LIVRÉ** → comment the ticket with the reason, park it, refill the
    slot with the next ticket. Re-launch a ticket at most once, with the previous
    report in the prompt.
-4. **Tickets révélés** in a report → create them with `write-ticket` (sub-issue of
+5. **Tickets révélés** in a report → create them with `write-ticket` (sub-issue of
    the epic if they serve its "Fini quand", otherwise standalone with « pas urgent »;
    « Créé par » the user via run-epic, unassigned).
    One inside the epic goes into its "Vagues" table and graph at once (rules
