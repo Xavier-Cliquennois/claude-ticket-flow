@@ -200,7 +200,10 @@ Key behaviours:
   GitHub's. At each launch, merge or set-aside the orchestrator re-reads the
   body just before writing and replaces only that section, rebuilt from its
   own state: nothing in the old section is trusted, and it writes only
-  numbers, models, states, emoji and its own wave reasons (no titles);
+  numbers, models, states, emoji and its own short wave reasons in plain
+  characters (no titles). It writes nothing after a failed or empty read,
+  with two « Vagues » headings, if the rest of the body would not be kept
+  intact, or if the body changed again between its read and the edit;
 - **long-lived integration branch** (merge target is not `main`): agents put
   a production bug fix that also concerns `main` in a separate `fix(...)`
   commit and list it in the report (« Fixes for main »). The orchestrator only
