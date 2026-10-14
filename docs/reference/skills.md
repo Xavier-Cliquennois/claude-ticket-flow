@@ -114,6 +114,15 @@ See [Running an epic](../guides/running-an-epic.md) for the full walkthrough.
 Key behaviours:
 
 - names the epic or asks; never picks one;
+- the epic's tickets are its sub-issues, read at every refresh with
+  `gh api --paginate .../sub_issues --jq` (the endpoint pages at 30, even with
+  `per_page=100`), checked against the epic's sub-issue total, never from a
+  hand-kept list; a ticket opened during the run is attached as a sub-issue at
+  once; "done" is GitHub's closed state with reason `completed` (never
+  `not_planned`, and never a ticket the orchestrator did not itself see merged
+  and closed: that one is reported to you);
+  sub-issues from another repository are ignored and reported, and a
+  sub-issue added by someone else during the run is parked until you agree;
 - **list mode**: a plain list of tickets (one or more) runs the same way,
   without the epic steps (epic line, card, closing comment);
 - ticket agents follow `deliver-ticket` in agent mode (or the project's own

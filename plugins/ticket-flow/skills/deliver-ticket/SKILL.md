@@ -174,6 +174,7 @@ shows it live:
   orchestrator does it).
 - Revealed tickets → create them with `write-ticket` (sub-issue of the parent
   epic if they serve its « Fini quand », otherwise standalone, « pas urgent »).
+  Agent mode: do not create them, list them in the report; the orchestrator creates them.
 - Agent mode: send the report with ÉTAT « FUSIONNÉ ».
 
 ## 9. Report

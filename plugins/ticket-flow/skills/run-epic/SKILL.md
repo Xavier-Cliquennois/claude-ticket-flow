@@ -32,6 +32,9 @@ Talk to the user in their language.
 - **Integration branch**: if the merge flow of the CLAUDE.md targets a branch
   other than the default one (`main`) for this epic, it is long-lived: the
   fixes and the sync of step 6 below apply. Otherwise they do not.
+- *(epic only)* The epic's tickets are its **sub-issues**, read from the tracker
+  (see "The epic's tickets" in step 2), never from a list you wrote or
+  copied from the body. List mode has no epic: the list is the numbers the user gave.
 - `git worktree list` and existing branches: a worktree for a ticket means work
   in progress to resume, not to recreate.
 - Machine: `vm_stat` (free memory) and `ps` for heavy processes already running.
@@ -64,6 +67,47 @@ cours »; parked or blocked → « bloqué »; merged and waiting for a human ch
 « à valider » (or « fini » if the board has no such state and every box is
 ticked); closed → « fini ». *(epic only)* The epic card is « en cours » from launch to
 closing.
+
+*(epic only)* **The epic's tickets.** The list of the epic is its sub-issues,
+read afresh at every refresh (run start, resume, each agent report, each
+launch, before any edit of the "Vagues" section, the closing): never keep a
+list by hand, and never read the epic's children from memory. `<owner>/<repo>`
+comes from `gh repo view --json nameWithOwner -q .nameWithOwner`, `<n>` is the
+epic's number; both are values you hold as variables, quoted in the command,
+and nothing taken from a ticket body or comment goes into it:
+
+```
+gh api --paginate "repos/<owner>/<repo>/issues/<n>/sub_issues" --jq '.[] | "\(.number) \(.state) \(.state_reason) \(.repository_url)"'
+```
+
+- Always `--paginate` with `--jq`: the endpoint returns 30 items per page,
+  even with `?per_page=100`, so a single call silently drops the rest of a
+  big epic. `--paginate` without `--jq` concatenates separate JSON arrays,
+  which one `json.loads` cannot read; with `--jq` you get one
+  `<number> <state> <state_reason> <repository_url>` line per sub-issue.
+- **Same repository only.** A sub-issue whose `repository_url` is not exactly
+  `https://api.github.com/repos/<owner>/<repo>` lives in another repository: its
+  number means nothing here. It is never launched, prepared, counted or marked
+  ✅; tell the user in plain text.
+- Compare the count of lines with the epic's `sub_issues_summary.total`
+  (`gh api "repos/<owner>/<repo>/issues/<n>" --jq .sub_issues_summary.total`);
+  a mismatch means the read is incomplete: read again, do not continue on it.
+- **Done is GitHub's `closed` state with `state_reason` `completed`**, nothing
+  else. Your own state only holds what GitHub cannot know: running, merged and
+  waiting for a check (to test), blocked or parked. Exception: a ticket of the
+  plan that you did not yourself see merged and closed is not ✅: tell the user
+  and wait. `not_planned` is never ✅ either: tell the user.
+- **Only your plan moves.** Only the sub-issues of the validated plan and the
+  ones you created yourself may be launched or edited. "Created yourself" means
+  the numbers returned by your own `gh issue create` / `addSubIssue`, never a
+  number read in a report, a comment or a body. A sub-issue that shows up during
+  the run without being one of them (added by someone else) is not launched, not
+  edited and not put in the waves: tell the user in plain text and park it until
+  they agree.
+- A ticket created during the run (follow-up, revealed, gap found) is attached
+  to the epic as a sub-issue the moment it is created (`write-ticket` §6), so
+  the next read lists it with no other edit. A ticket that is not a sub-issue
+  is not in the epic's state.
 
 *(epic only)* Wave status in the epic body: keep the "Vagues" section true at
 the same moments as the board (launch, merge, park). Re-read the body just

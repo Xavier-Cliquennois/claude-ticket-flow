@@ -179,6 +179,9 @@ GitHub:
 - Sub-issue / blocked-by links through GraphQL with node ids
   (`gh api graphql -f query='mutation{addSubIssue(input:{issueId:"<parent>",subIssueId:"<child>"}){issue{number}}}'`,
   same with `addBlockedBy`). Get node ids with `gh issue view N --json id`.
+  A ticket created for an epic (follow-up, revealed) is attached at once: the
+  epic's state is read from its sub-issues, so an unattached ticket does not exist for it.
+  Read them with `gh api --paginate ... --jq`, never plain `per_page`: it caps at 30.
 
 GitHub Project (when the CLAUDE.md names a board): add every created issue,
 epic included, and set its fields.
