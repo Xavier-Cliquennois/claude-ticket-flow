@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+# move-card: move one issue's card on a GitHub Projects (v2) board to a status.
+#
+# Finds the card from the issue itself (issue -> projectItems) instead of
+# listing the whole board, then sets one single-select field. Two GraphQL
+# calls of about 1 point each, whatever the board size.
+#
+# Installed into a project by the ticket-flow `setup-project` skill
+# (as .claude/scripts/move-card) and called from the CLAUDE.md Workflow section.
+#
+# Usage:
+#   move-card [--dry-run] [--repo OWNER/REPO] [--project N] [--field NAME] ISSUE STATUS
+#
+#   ISSUE      issue number in the repository
+#   STATUS     exact name of the option to set (e.g. "In Progress")
+#   --repo     repository of the issue (default: the current one, from gh)
+#   --project  board number; required only when the issue sits on several boards
+#   --field    single-select field to set (default: Status)
+#   --dry-run  look the card up and print what would change, change nothing
+#
+# Exit codes: 0 moved (or dry run ok), 1 bad usage, 2 card/field/option not
+# found, 3 GitHub API failure.
+#
+# Every input reaches GitHub as a GraphQL variable (-f for strings, -F only for
+# validated integers), never inside the query text.
+
+set -euo pipefail
+
+usage() {
+  sed -n '11,22p' "$0" | sed 's/^# \{0,1\}//' >&2
+  exit 1
+}
+
+die() { echo "move-card: $2" >&2; exit "$1"; }
+
+dry_run=0
+repo=""
+project=""
+field="Status"
+args=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --dry-run) dry_run=1; shift ;;
+    --repo) [ $# -ge 2 ] || usage; repo="$2"; shift 2 ;;
+    --project) [ $# -ge 2 ] || usage; project="$2"; shift 2 ;;
+    --field) [ $# -ge 2 ] || usage; field="$2"; shift 2 ;;
+    -h|--help) usage ;;
+    --) shift; while [ $# -gt 0 ]; do args+=("$1"); shift; done ;;
+    -*) die 1 "unknown option: $1" ;;
+    *) args+=("$1"); shift ;;
+  esac
+done
+
+[ "${#args[@]}" -eq 2 ] || usage
+issue="${args[0]}"
+status="${args[1]}"
+
+# --- Validation ------------------------------------------------------------
+is_number() { [[ "$1" =~ ^[1-9][0-9]{0,8}$ ]]; }
+is_label() {
+  # 1-100 characters, no control characters (tabs and newlines included).
+  [ -n "$1" ] && [ "${#1}" -le 100 ] && ! [[ "$1" =~ [[:cntrl:]] ]]
+}
+
+is_number "$issue" || die 1 "ISSUE must be a positive integer, got: $issue"
+is_label "$status" || die 1 "STATUS must be 1-100 printable characters"
+is_label "$field" || die 1 "--field must be 1-100 printable characters"
+[ -z "$project" ] || is_number "$project" || die 1 "--project must be a positive integer"
+
+command -v gh >/dev/null 2>&1 || die 3 "gh (GitHub CLI) is not installed"
+
+if [ -z "$repo" ]; then
+  repo="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null)" \
+    || die 3 "cannot tell the current repository; pass --repo OWNER/REPO"
+fi
+[[ "$repo" =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$ ]] \
+  || die 1 "--repo must look like OWNER/REPO, got: $repo"
+owner="${repo%%/*}"
+name="${repo#*/}"
+
+# --- 1. Find the card from the issue ---------------------------------------
+# Output lines: "C <cost>" once, then per card "I <item> <project id> <number>
+# <field id>" followed by its "O <option id> <option name>" lines.
+lookup_query='
+query($owner: String!, $name: String!, $issue: Int!, $field: String!) {
+  rateLimit { cost remaining }
+  repository(owner: $owner, name: $name) {
+    issue(number: $issue) {
+      projectItems(first: 10) {
+        nodes {
+          id
+          project {
+            id
+            number
+            field(name: $field) {
+              ... on ProjectV2SingleSelectField { id options { id name } }
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+lookup_jq='
+  "C\t\(.data.rateLimit.cost)\t\(.data.rateLimit.remaining)",
+  (.data.repository.issue.projectItems.nodes[]
+   | "I\t\(.id)\t\(.project.id)\t\(.project.number)\t\(.project.field.id // "")",
+     ((.project.field.options // [])[] | "O\t\(.id)\t\(.name)"))'
+
+lookup="$(gh api graphql \
+  -f query="$lookup_query" \
+  -f owner="$owner" -f name="$name" -F issue="$issue" -f field="$field" \
+  --jq "$lookup_jq")" || die 3 "lookup failed for $repo#$issue"
+
+cost="?"; remaining="?"
+cards=0; matched=0
+cur_item=""; cur_project=""; cur_number=""; cur_field=""
+item=""; project_id=""; field_id=""; option_id=""; field_seen=0; option_names=""
+
+while IFS=$'\t' read -r kind a b c d; do
+  case "$kind" in
+    C) cost="$a"; remaining="$b" ;;
+    I)
+      cards=$((cards + 1))
+      cur_item="$a"; cur_project="$b"; cur_number="$c"; cur_field="$d"
+      if [ -z "$project" ] || [ "$project" = "$cur_number" ]; then
+        matched=$((matched + 1))
+        item="$cur_item"; project_id="$cur_project"; field_id="$cur_field"
+        [ -z "$cur_field" ] || field_seen=1
+        option_names=""; option_id=""
+      fi
+      ;;
+    O)
+      if [ "$item" = "$cur_item" ]; then
+        option_names="${option_names:+$option_names, }$b"
+        [ "$b" != "$status" ] || option_id="$a"
+      fi
+      ;;
+  esac
+done <<< "$lookup"
+
+[ "$cards" -gt 0 ] || die 2 "$repo#$issue is on no board (add it first: gh project item-add)"
+if [ "$matched" -eq 0 ]; then
+  die 2 "$repo#$issue has no card on board #$project"
+elif [ "$matched" -gt 1 ]; then
+  die 2 "$repo#$issue is on $matched boards; pass --project N"
+fi
+[ "$field_seen" -eq 1 ] || die 2 "the board has no single-select field named \"$field\""
+[ -n "$option_id" ] || die 2 "\"$field\" has no option \"$status\" (options: $option_names)"
+
+if [ "$dry_run" -eq 1 ]; then
+  printf 'dry run: would set %s="%s" on card %s of %s#%s (lookup cost %s point(s), %s left)\n' \
+    "$field" "$status" "$item" "$repo" "$issue" "$cost" "$remaining"
+  exit 0
+fi
+
+# --- 2. Set the field -------------------------------------------------------
+update_query='
+mutation($project: ID!, $item: ID!, $field: ID!, $option: String!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $project, itemId: $item, fieldId: $field,
+    value: { singleSelectOptionId: $option }
+  }) { projectV2Item { id } }
+}'
+
+gh api graphql \
+  -f query="$update_query" \
+  -f project="$project_id" -f item="$item" -f field="$field_id" -f option="$option_id" \
+  --jq '.data.updateProjectV2ItemFieldValue.projectV2Item.id' >/dev/null \
+  || die 3 "update failed for $repo#$issue"
+
+printf 'moved %s#%s to %s="%s" (lookup cost %s point(s))\n' \
+  "$repo" "$issue" "$field" "$status" "$cost"

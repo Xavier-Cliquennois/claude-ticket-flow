@@ -19,9 +19,29 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 |---|---|---|
 | 1. Inspect | git status and history, remote, `gh repo view`, labels, recent issues, GitHub Projects (`gh project list`, `field-list`), Linear MCP, `CLAUDE.md` / `AGENTS.md` / copilot instructions, `.claude/` hooks and skills, CI workflows, stack and verify commands, project memory notes | no (read-only) |
 | 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, project labels | — |
-| 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, Linear label groups | yes |
+| 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups | yes |
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
+
+### move-card
+
+`plugins/ticket-flow/scripts/move-card`, copied by `setup-project` into a
+project with a GitHub Project board as `.claude/scripts/move-card`. It moves
+one issue's card without listing the board: it reads the card from the issue
+(`issue { projectItems }`, about 1 GraphQL point), then sets the field with
+`updateProjectV2ItemFieldValue`, so a move costs about 2 points whatever the
+board size (`gh project item-list` costs hundreds on a large board and misses
+cards past `--limit`).
+
+```
+move-card [--dry-run] [--repo OWNER/REPO] [--project N] [--field NAME] ISSUE STATUS
+```
+
+`STATUS` is the exact option name; `--project` is needed only when the issue
+sits on several boards; `--field` defaults to `Status`; `--dry-run` does the
+lookup and changes nothing. Arguments are validated and reach GitHub only as
+GraphQL variables. Exit codes: 0 done, 1 bad usage, 2 card, field or option
+not found (the message lists the options), 3 GitHub API failure.
 | 5. Finish | what was created, what changed, what is left to you | — |
 
 ## write-ticket

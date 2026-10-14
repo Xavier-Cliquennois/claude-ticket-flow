@@ -83,6 +83,17 @@ them; don't replace them.
 For Linear, create the equivalent labels in a "Modèle IA" group and a "Taille"
 group through the Linear MCP, only after a yes.
 
+For a GitHub Project board, install the card mover, after the same yes: copy
+`${CLAUDE_PLUGIN_ROOT}/scripts/move-card` to `.claude/scripts/move-card` in the
+project and make it executable (if the variable is not expanded, the plugin
+lives under `~/.claude/plugins/`: `ls ~/.claude/plugins/cache/*/ticket-flow/*/scripts/move-card`,
+take the newest version). On an upgrade, replace a copy that differs from the
+plugin's and say so. Check it with a dry run on any issue already on the board
+(`.claude/scripts/move-card --dry-run --repo <owner>/<repo> --project <n> <N> "<option>"`):
+it reads the card from the issue (about 1 GraphQL point whatever the board size)
+and changes nothing. It is committed with CLAUDE.md, never run without `--dry-run`
+here.
+
 ## 4. Write or upgrade CLAUDE.md
 
 If there is no CLAUDE.md: write one with a short project header (what it is, stack,
@@ -102,13 +113,14 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 2 -->
+<!-- ticket-flow workflow: 3 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
 - Tableau : GitHub Project <owner> #<n> « <titre> ». Statuts : à faire=`<option>`,
   en cours=`<option>`, à valider=`<option|—>`, bloqué=`<option>`, fini=`<option>`.
   Champs à remplir : <Phase, ... | aucun>.
+- Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau) ; jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
 - Labels obligatoires : un type, `model:opus|sonnet`, `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.

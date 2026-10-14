@@ -6,7 +6,7 @@ examples.
 > Up to date as of 2026-10-13 (ticket-flow 0.5.1).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
-line under the heading is a template marker, `<!-- ticket-flow workflow: 2 -->`:
+line under the heading is a template marker, `<!-- ticket-flow workflow: 3 -->`:
 the update band offers to run `setup-project` when a project's marker is
 missing or lower than the plugin's (see
 [skills.md](skills.md#update-band)). The number only moves when the template
@@ -19,7 +19,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Field | Read by | Default without it |
 |---|---|---|
 | Tracker: GitHub issues of `owner/repo`, or Linear team / project | all | GitHub issues of the current repository |
-| Board: GitHub Project `owner #n`, and its status options mapped to *to do*, *in progress*, *to validate*, *blocked*, *done*; extra fields to fill (e.g. Phase) | write-ticket, deliver-ticket, run-epic | no board |
+| Board: GitHub Project `owner #n`, and its status options mapped to *to do*, *in progress*, *to validate*, *blocked*, *done*; extra fields to fill (e.g. Phase); the `move-card` command that moves a card | write-ticket, deliver-ticket, run-epic | no board |
 | Mandatory labels beyond the standard ones | write-ticket | standard set only |
 | Worktree and branch convention | deliver-ticket, run-epic (agent prompt) | `../<repo>-<N>`, branch from the ticket |
 | Verify commands, in order | deliver-ticket, run-epic, write-ticket ("done when") | inferred from `package.json` / `pyproject.toml` |
@@ -41,6 +41,9 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Board: GitHub Project acme #3 "Shop". Statuses: to do=`Todo`,
   in progress=`In Progress`, to validate=`In Review`, blocked=`Blocked`,
   done=`Done`. Fields to fill: none.
+- Moving a card: `.claude/scripts/move-card --repo acme/shop --project 3 <N> "<option>"`
+  (about 2 GraphQL points whatever the board size); never `gh project item-list`
+  to find a card.
 - Tickets are written with the `write-ticket` skill.
 - Mandatory labels: a type, `model:opus|sonnet`, `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are
