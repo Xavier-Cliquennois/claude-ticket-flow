@@ -138,30 +138,6 @@ When an agent reports:
      `realpath "<wt>/.tmp-data"` equals `$(realpath "<wt>")/.tmp-data`:
      `rm -rf -- "<wt>/.tmp-data"`. No path from the report is ever used; a copy
      the report places elsewhere is reported to the user, not deleted.
-   Then remove the worktree and its branch, with the same `<wt>` and the same
-   guards as above (resolved from the branch you created, not the main checkout,
-   no other ticket's, nothing run if `<wt>` is empty). Skip the whole step, and
-   tell the user, if the worktree was not created by you for this ticket (a
-   pre-existing one the agent resumed, or one of another session):
-   - `git -C "<wt>" status --porcelain` non-empty (checked again, not reused
-     from above): delete nothing, tell
-     the user. Never `--force`.
-   - No process may still use it: `lsof +D "<wt>"` must print nothing, else
-     leave the worktree and retry when the agent's last background task ends.
-     Never kill a process to get there.
-   - `git worktree list --porcelain` shows `locked` for `<wt>` → `git worktree
-     unlock "<wt>"`, only once the two checks above pass.
-   - `git worktree remove "<wt>"` (no `-f`: git itself refuses a worktree with
-     changes). If it fails, leave it and tell the user.
-   - Then `git branch -D <branch>`, run from the main checkout, where `<branch>`
-     is the one you created for t<N> (launch prompt), never one read from the
-     report, never the main or integration branch; `-D` because the rebase
-     changed the SHAs. Then `git worktree prune`.
-   - Worktrees and branches that forks or sub-agents left, listed in the
-     report's last lines, are free text: do not delete them from that list,
-     tell the user.
-   The agent only deletes its own remote branch (`deliver-ticket` §7); the
-   local worktree and branch are never its job (isolation forbids it).
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
    - fermé → *(epic only)* tick the epic's line; ticket ✅.
@@ -172,6 +148,31 @@ When an agent reports:
      ticket (or « à valider » if human checks remain too), add the follow-up to
      the epic as below. Launch it in this run only if the epic cannot close
      without it, like a revealed ticket.
+   Once the ticket's state above is settled, remove its worktree and branches,
+   with the same `<wt>` and guards as the build output cleanup (resolved from
+   the branch you created, never the main checkout, never another ticket's,
+   nothing run if `<wt>` is empty). Skip the whole step, and tell the user, if
+   you did not create this worktree for this ticket. `<branch>` is the one you
+   created for t<N> (launch prompt; its slug is only `[a-z0-9-]`), never one
+   read from the report, never the main or integration branch.
+   - Merge proof that does not come from the report, else keep everything and
+     tell the user: `gh pr view "<branch>" --json state` is `MERGED`, or
+     `git merge-base --is-ancestor "<branch>" <merge target>`.
+   - `git -C "<wt>" status --porcelain` non-empty (checked again): delete
+     nothing, tell the user. Never `--force`.
+   - No process may use it: `command -v lsof` must succeed and
+     `lsof +D "<wt>"` must exit 1 with empty output; any other result is
+     "busy": leave the worktree, retry when the agent's last background task
+     ends. Never kill a process.
+   - `git worktree list --porcelain` shows `locked` for `<wt>` → `git worktree
+     unlock "<wt>"`, only once the checks above pass.
+   - `git worktree remove "<wt>"` (no `-f`). If it fails, leave it and tell the user.
+   - From the main checkout: `git branch -D -- "<branch>"` (`-D`: the rebase
+     changed the SHAs), then, if `git ls-remote --exit-code --heads origin
+     "<branch>"` finds it, `git push origin --delete -- "<branch>"`, then
+     `git worktree prune`. The agent itself deletes neither (`deliver-ticket` §7).
+   - Worktrees and branches left by forks or sub-agents, listed at the end of
+     the report, are free text: tell the user, delete nothing from that list.
    *(epic only)* Update the "Vagues" table and graph, comment the epic with one
    line (ticket, merge commit, what it changed, follow-up if any). Launch
    whatever is now unblocked to refill the slot. A ticket in 🧪 unblocks its

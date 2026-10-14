@@ -140,13 +140,14 @@ Key behaviours:
   resolves (`realpath`) elsewhere or is a symlink, and never a path from the
   report; after a disk-full episode, it messages every
   running agent to re-check `git status` / `git diff` and re-run what failed;
-- after FUSIONNÉ, removes the ticket's worktree and local branch itself (the
-  agent only deletes its remote branch): same `<wt>` and guards as the build
-  output cleanup, only a worktree it created, never the main checkout, clean
-  `git status`, no process using it (`lsof`), unlocks if locked, `git worktree
-  remove` without `--force`, then `git branch -D` of the branch it created
-  and `git worktree prune`; fork leftovers from the report are listed to you,
-  not deleted;
+- after FUSIONNÉ and the ticket state check, removes the ticket's worktree and
+  branches itself (agents delete nothing): same `<wt>` and guards as the build
+  output cleanup, only a worktree it created, never the main checkout; needs a
+  merge proof not taken from the report, a clean `git status`, `lsof` available
+  and reporting no process; unlocks if locked, `git worktree remove` without
+  `--force`, then `git branch -D`, the remote branch if it exists, and
+  `git worktree prune`; fork leftovers from the report are listed to you, not
+  deleted;
 - never calls a blocking question while agents run;
 - `security-reviewer` before every merge; merges serialized;
 - board kept true; the epic's wave table and Mermaid graph show each
