@@ -59,7 +59,7 @@ delivery skill, that one is followed instead.
 | 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
 | 2. Start | board → in progress, worktree per convention, exclusive resources one at a time |
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python) |
-| 4. Verify | verify commands, browser protocol, one proof per « done when » box |
+| 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
 | 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |

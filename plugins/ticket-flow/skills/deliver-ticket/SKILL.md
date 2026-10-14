@@ -84,6 +84,15 @@ shows it live:
 
 - Run the CLAUDE.md verify commands, in order, from the worktree. A red check
   is fixed, not skipped; one you cannot run is reported as not run, with why.
+- Long suite (a full run of ~10+ minutes): iterate on the touched tests only.
+  Just before the merge (agent mode: before the « PRÊT À FUSIONNER » report),
+  `fetch` and rebase once, then run the **full** suite **once** on that final
+  state. Never skip it after the last rebase, never rerun it after each rebase.
+- The branch moved again before the merge: rebase, and rerun the suite only if
+  the new commits touch what it covers. The report says what was rerun and what
+  was not. Each merge is backed by one full run on the merged state, stated in
+  the report (and the PR, if any).
+- A known-flaky test failing alone is rerun alone and named in the report.
 - UI change: Chrome first; if Chrome is unreachable or fails 2-3 times,
   Playwright; otherwise write « test navigateur NON FAIT » and why.
 - Each « Fini quand » box gets a one-line proof (command and result, file:line,
