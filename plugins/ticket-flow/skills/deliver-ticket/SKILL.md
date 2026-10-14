@@ -139,7 +139,9 @@ shows it live:
 - Merge exactly as the CLAUDE.md says (PR to `main`, PR to `dev`, local
   `--no-ff`, after green CI). Never force-push a shared branch.
 - Once merged, remove the worktree (`git worktree remove`) unless the CLAUDE.md
-  keeps them.
+  keeps them. In agent mode, only delete your own remote branch (`git push
+  origin --delete <your branch>`, skip if none was pushed) and stop there: you
+  cannot remove your own worktree or local branch, the orchestrator does it.
 
 ## 8. Close
 

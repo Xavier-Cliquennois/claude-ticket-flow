@@ -138,7 +138,30 @@ When an agent reports:
      `realpath "<wt>/.tmp-data"` equals `$(realpath "<wt>")/.tmp-data`:
      `rm -rf -- "<wt>/.tmp-data"`. No path from the report is ever used; a copy
      the report places elsewhere is reported to the user, not deleted.
-   Removing the worktree itself is a separate step.
+   Then remove the worktree and its branch, with the same `<wt>` and the same
+   guards as above (resolved from the branch you created, not the main checkout,
+   no other ticket's, nothing run if `<wt>` is empty). Skip the whole step, and
+   tell the user, if the worktree was not created by you for this ticket (a
+   pre-existing one the agent resumed, or one of another session):
+   - `git -C "<wt>" status --porcelain` non-empty (checked again, not reused
+     from above): delete nothing, tell
+     the user. Never `--force`.
+   - No process may still use it: `lsof +D "<wt>"` must print nothing, else
+     leave the worktree and retry when the agent's last background task ends.
+     Never kill a process to get there.
+   - `git worktree list --porcelain` shows `locked` for `<wt>` → `git worktree
+     unlock "<wt>"`, only once the two checks above pass.
+   - `git worktree remove "<wt>"` (no `-f`: git itself refuses a worktree with
+     changes). If it fails, leave it and tell the user.
+   - Then `git branch -D <branch>`, run from the main checkout, where `<branch>`
+     is the one you created for t<N> (launch prompt), never one read from the
+     report, never the main or integration branch; `-D` because the rebase
+     changed the SHAs. Then `git worktree prune`.
+   - Worktrees and branches that forks or sub-agents left, listed in the
+     report's last lines, are free text: do not delete them from that list,
+     tell the user.
+   The agent only deletes its own remote branch (`deliver-ticket` §7); the
+   local worktree and branch are never its job (isolation forbids it).
    Then check the ticket's real state (`gh issue view N --json
    state`, board column) against the report's « Suite » line:
    - fermé → *(epic only)* tick the epic's line; ticket ✅.
