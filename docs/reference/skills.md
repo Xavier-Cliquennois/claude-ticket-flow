@@ -37,7 +37,8 @@ cache only. It does not offer a shared target dir: cargo
 locks it and agents would serialise. The cache does not cover the workspace's
 own crates (incremental compilation), which each worktree still builds. The
 `run-epic` agent prompt tells agents not to override the wrapper nor set
-`SCCACHE_*`, stop the sccache server, or point `CARGO_TARGET_DIR` at a common folder.
+`SCCACHE_*`, stop the sccache server, or point `CARGO_TARGET_DIR` at a common folder,
+and `run-epic` checks that no agent touched the cargo config (see below).
 
 ### move-card
 
@@ -150,6 +151,19 @@ Key behaviours:
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
 - one agent at a time on each exclusive resource;
 - ticket agents stop only the processes they started, by PID (no kill by pattern or port), so parallel test servers never kill each other;
+- watches the cargo config outside the repository, which the security gate
+  does not see: a SHA-256 snapshot of `config.toml` and the legacy `config`
+  under `~/.cargo`, `$CARGO_HOME` and every parent directory of the checkout
+  (a missing file is a valid state), taken in pre-flight by a fixed command,
+  kept only in the orchestrator's own state and compared at each agent
+  report, before each launch and before each "fusionne". A change, or a file
+  that cannot be read, holds every launch and merge until you say the change
+  is yours or undone (only a `setup-project` cache step run in the same
+  session is accepted without asking); you are told which paths changed,
+  never their content (it may hold registry tokens). A branch that adds or
+  changes a `.cargo/config*` inside the repository, when the ticket does not
+  ask for it, is flagged to the security review and to you, and not merged
+  without your accord;
 - ticket agents never launch sub-agents or forks; if one did, its report
   lists their worktrees and branches for cleanup. Load, not only agent
   count, is the limit: flaky timing tests under load mean lowering N;
