@@ -15,6 +15,7 @@ published, and on demand with `/orchestra`:
 ╭──────────────────────────────────────────────────────────────────╮
 │ ORCHESTRA                12:44 · 2 actifs · 8 finis · 1 en échec │
 │ ▶ vague 2/3 · t486 fusionné · t487 t488 en cours 3 min           │
+│ Σ 12 agents · 582 appels · 41 M tok                              │
 │ ⏵ orchestrateur · Wait for CI on PR #436 · 6 min · fond          │
 │   $ gh pr checks 436 --watch                                     │
 │   │ e2e     pending                                              │
@@ -33,14 +34,15 @@ EN COURS · 2 ──────────────────────
     │ ● streams 10 000 rows…
 
 TERMINÉS · 9 ───────────────────────────────────────────────────────
-✓ sec-486 Security review PR #433                        1 min   5 %
-✗ t484    XAV-484 webhook Stripe                 failed 41 min  44 %
-✓ t486    XAV-486 volume uploads VPS                    27 min  19 %
+✓ sec-486 Security revi…   1 min ·   7 appels ·   75 k tok   5 %
+✗ t484    XAV-484 w… failed  41 min · 135 appels ·   16 M tok  44 %
+✓ t486    XAV-486 volume…  27 min ·  90 appels · 4647 k tok  19 %
 … 6 de plus
 ```
 
 - **Header frame**: clock, running / ended / failed counts, the current stage
-  and how long ago it was published.
+  and how long ago it was published, and the run's totals (`Σ`): agents, tool
+  calls and tokens, running agents included, live.
 - **EN COURS**: one two-line card per running agent: name, task and duration;
   a **context gauge** (green under 30 %, yellow from 30 %, red from 40 %),
   compactions, and the last tool, or, while the agent runs a command, that
@@ -54,8 +56,12 @@ TERMINÉS · 9 ─────────────────────�
   command also shows the last 3 lines of its output, refreshed every 5
   seconds.
 - **TERMINÉS**: one aligned line per ended agent, newest first: ✓ or ✗, name,
-  task, duration, context fill (coloured from 30 %); `failed` or `killed`
-  spelled out. What does not fit ends in `… N de plus`.
+  task, then its effort: duration, tool calls and tokens, then its context
+  fill (coloured from 30 %); `failed` or `killed` spelled out. Figures are
+  integers: tokens past 10 000 in `k`, past 10 000 000 in `M`. On a narrow
+  pane the line never wraps: the context fill goes first, then the effort
+  shortens (`27 min ·  90 app ·   4647 k`), then only the duration is left.
+  What does not fit ends in `… N de plus`.
 
 **A status-line file**: `~/.claude/state/orchestra/<session id>.txt` holds one
 line (`▶ <stage> · N agents actifs`), empty when idle. Point your status line at
@@ -79,6 +85,11 @@ flowchart LR
   (`$.agent.list()`); it records each subagent's last tool (`tool.call`), its
   context fill from the input tokens of its latest model request
   (`turn.step`), and its compactions (`session.compact`).
+- **Effort**: the mod counts each subagent's tool calls (one per `tool.call`
+  it makes) and its tokens (every `turn.step` of its loop: input, cache reads,
+  cache writes and output, summed), from its own events alone. What comes
+  before the first tick lists the agent is kept aside and added once it is
+  listed. An ended agent keeps its figures.
 - **Commands**: the mod watches every `Bash` call (`tool.call`). A background
   launch answers with its task id and the file its output goes to; the mod
   reads the end of that file on each tick. The command ends with its
@@ -129,6 +140,12 @@ on stdin and print the file.
   `set -o pipefail; script.sh 2>&1 | tee run.log`. A Python program writing
   into a pipe buffers its output: add `PYTHONUNBUFFERED=1` (or `python -u`) so
   lines show as they come.
+- The effort figures are the pane's own count, not the ones the orchestrator
+  writes in the epic's waves section (#18), which come from the completion
+  notifications: the two can differ. The pane's tokens sum every request's
+  whole input (cache reads included), so they can run much higher than a
+  notification's total; and a mod reload while an agent has not been listed yet loses what was kept
+  aside for it.
 - Claude Code offers no way to compact a subagent at a chosen threshold; the
   colors are there to tell you a ticket was too big, not to act on it. See
   [concepts](../concepts.md#a-ticket-fits-one-agent).

@@ -46,6 +46,16 @@ const cut = (text: string, max: number): string =>
 const nameOf = (label: string): string => (label.includes(' · ') ? (label.split(' · ')[0] ?? label) : '')
 const taskOf = (label: string): string => (label.includes(' · ') ? label.slice(label.indexOf(' · ') + 3) : label)
 
+// Effort figures, integers only: a token count past 10 000 in thousands, past
+// 10 000 000 in millions.
+const tokensText = (n: number): string => {
+  const whole = Math.max(0, Math.round(n))
+  if (whole < 10_000) return String(whole)
+  if (whole < 10_000_000) return `${Math.round(whole / 1000)} k`
+  return `${Math.round(whole / 1_000_000)} M`
+}
+const callsText = (n: number): string => `${n} appel${n > 1 ? 's' : ''}`
+
 const isFailed = (row: AgentRow): boolean => row.status === 'failed' || row.status === 'killed'
 
 const GAUGE_CELLS = 10
@@ -113,6 +123,32 @@ async function readTail($: EngineInterface, path: string): Promise<string[] | un
 }
 
 let shellSeq = 0
+
+// Effort counted for a subagent before the tick has listed it (its first
+// requests come before the first tick): merged into its row once listed.
+type Effort = { toolCalls: number; tokens: number }
+const pendingEffort = new Map<string, Effort>()
+
+async function addEffort($: EngineInterface, id: string, effort: Effort, lastTool?: string): Promise<void> {
+  if ((await read($, agents))[id] === undefined) {
+    const pending = pendingEffort.get(id) ?? { toolCalls: 0, tokens: 0 }
+    pendingEffort.set(id, { toolCalls: pending.toolCalls + effort.toolCalls, tokens: pending.tokens + effort.tokens })
+    return
+  }
+  await update($, agents, rows => {
+    const row = rows[id]
+    if (row === undefined) return rows
+    return {
+      ...rows,
+      [id]: {
+        ...row,
+        toolCalls: (row.toolCalls ?? 0) + effort.toolCalls,
+        tokens: (row.tokens ?? 0) + effort.tokens,
+        ...(lastTool === undefined ? {} : { lastTool }),
+      },
+    }
+  })
+}
 
 // Window size of the session's model, used to turn a subagent's input
 // tokens into a percentage (subagents usually run a model of the same window).
@@ -183,8 +219,11 @@ export const register: Register = on => {
             compactions: 0,
           }
           const isDone = DONE.has(info.status)
+          const pending = pendingEffort.get(info.id)
           merged[info.id] = {
             ...row,
+            toolCalls: (row.toolCalls ?? 0) + (pending?.toolCalls ?? 0),
+            tokens: (row.tokens ?? 0) + (pending?.tokens ?? 0),
             label: clean(info.name ? `${info.name} · ${info.description}` : info.description),
             status: info.status,
             endedAt: isDone ? (row.endedAt ?? now) : undefined,
@@ -200,6 +239,7 @@ export const register: Register = on => {
         }
         return merged
       })
+      for (const info of list) pendingEffort.delete(info.id)
       if (list.length > 0) await openPane($)
 
       // Refresh the running background commands' output, and end those that
@@ -259,19 +299,16 @@ export const register: Register = on => {
     return { result: 'Étape affichée.' }
   })
 
-  // Remember each subagent's last tool.
+  // Remember each subagent's last tool, and count its tool calls. Counting
+  // never stands in a tool call's way: a failure lets the call run.
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
-    if (id !== undefined) {
-      await update($, agents, rows => {
-        const row = rows[id]
-        return row === undefined ? rows : { ...rows, [id]: { ...row, lastTool: e.tool } }
-      })
-    }
+    if (id !== undefined) await addEffort($, id, { toolCalls: 1, tokens: 0 }, e.tool)
     return next(e)
-  })
+  }).catch(($, e, next) => next(e))
 
-  // A subagent's context fill: the input tokens its latest request was answered over.
+  // A subagent's context fill: the input tokens its latest request was
+  // answered over; and its tokens, every request's input and output summed.
   on('turn.step', async function* ($, e, next) {
     const answered = yield* next(e)
     const id = e.agentId
@@ -283,6 +320,7 @@ export const register: Register = on => {
         const row = rows[id]
         return row === undefined ? rows : { ...rows, [id]: { ...row, contextTokens: tokens } }
       })
+      await addEffort($, id, { toolCalls: 0, tokens: tokens + usage.output_tokens })
     }
     return answered
   })
@@ -555,15 +593,26 @@ export const register: Register = on => {
     }
     const CARD_HEIGHT = 2
 
-    // An ended agent: one line, name, task, duration and context fill.
+    // An ended agent: one line, name, task, then its effort (duration, tool
+    // calls, tokens) and context fill. The effort keeps the widest form that
+    // leaves the task 8 columns; the context fill goes first when it does not.
     const nameWidth = Math.min(12, Math.max(0, ...ended.map(row => nameOf(row.label).length)))
     const endedLine = (row: AgentRow) => {
       const failed = isFailed(row)
       const pct = percentOf(row)
-      const meta = `${durationText((row.endedAt ?? now) - row.startedAt).padStart(7)}`
-      const pctText = pct === undefined ? '' : `${pct} %`.padStart(6)
       const status = failed ? ` ${row.status}` : ''
-      const taskRoom = Math.max(4, width - nameWidth - meta.length - 6 - status.length - 3)
+      const duration = durationText((row.endedAt ?? now) - row.startedAt).padStart(7)
+      const calls = String(row.toolCalls ?? 0)
+      const tokens = tokensText(row.tokens ?? 0)
+      const metaRoom = Math.max(0, width - nameWidth - status.length - 3 - 8)
+      const metas = [
+        `${duration} · ${calls.padStart(3)} appels · ${tokens.padStart(6)} tok`,
+        `${duration} · ${calls.padStart(3)} app · ${tokens.padStart(6)}`,
+        duration,
+      ]
+      const meta = metas.find(text => text.length <= metaRoom) ?? cut(duration.trim(), Math.max(1, metaRoom))
+      const pctText = pct === undefined || meta.length + 6 > metaRoom ? '' : `${pct} %`.padStart(6)
+      const taskRoom = Math.max(4, width - nameWidth - meta.length - pctText.length - status.length - 3)
       return (
         <Box flexDirection="row">
           <Box flexShrink={0}>
@@ -634,6 +683,17 @@ export const register: Register = on => {
     const stageText = current === null ? undefined : `▶ ${clean(current.text)}`
     const stageAge = current === null ? '' : ` ${durationText(now - current.at)}`
     room -= 3 + (stageText === undefined ? 1 : Math.ceil((stageText.length + stageAge.length) / inner))
+    // The run's totals, running agents included: one line in the header.
+    const totalCalls = rows.reduce((sum, row) => sum + (row.toolCalls ?? 0), 0)
+    const totalTokens = rows.reduce((sum, row) => sum + (row.tokens ?? 0), 0)
+    const totals =
+      rows.length === 0
+        ? undefined
+        : cut(
+            `Σ ${rows.length} agent${rows.length > 1 ? 's' : ''} · ${callsText(totalCalls)} · ${tokensText(totalTokens)} tok`,
+            inner,
+          )
+    if (totals !== undefined) room -= 1
 
     // Running agents first, whole; the ended ones fill what is left.
     const shownCards: AgentRow[] = []
@@ -673,6 +733,11 @@ export const register: Register = on => {
               </Text>
               <Text dimColor>{stageAge}</Text>
             </Box>
+          )}
+          {totals !== undefined && (
+            <Text dimColor wrap="truncate-end">
+              {totals}
+            </Text>
           )}
           </Box>
         {rows.length === 0 && <Text dimColor>Aucun sous-agent pour l'instant.</Text>}

@@ -10,6 +10,11 @@ export type AgentRow = {
   lastTool?: string
   contextTokens?: number
   compactions: number
+  // Tool calls the agent made and tokens its requests counted (input, cache
+  // reads and writes, output), summed from the mod's own events. Optional:
+  // a row kept from an earlier version reads as 0.
+  toolCalls?: number
+  tokens?: number
 }
 
 export type ShellRow = {
