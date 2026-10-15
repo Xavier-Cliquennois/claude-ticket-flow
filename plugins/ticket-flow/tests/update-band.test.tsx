@@ -53,7 +53,7 @@ for (const surface of SURFACES) {
   })
 
   test(`${surface}: a Workflow section with the current marker says nothing`, async ($, on) => {
-    engine(on, '0.4.0', '# P\n\n## Workflow\n<!-- ticket-flow workflow: 3 -->\n')
+    engine(on, '0.4.0', '# P\n\n## Workflow\n<!-- ticket-flow workflow: 4 -->\n')
     await (await $.ui.mount({ ...BAND, surface })).unmount()
     const ui = await $.ui.mount({ ...BAND, surface })
     expect(await ui.find({ type: 'Button', label: 'Remettre à niveau' })).toBeUndefined()

@@ -9,6 +9,6 @@ export const register: Register = on => {
     manifestPath: 'plugins/ticket-flow/.claude-plugin/plugin.json',
     // Bump `current` (and the marker setup-project writes) when the Workflow
     // section's template changes in a way existing projects should pick up.
-    workflow: { marker: 'ticket-flow workflow', current: 3, command: 'ticket-flow:setup-project' },
+    workflow: { marker: 'ticket-flow workflow', current: 4, command: 'ticket-flow:setup-project' },
   })
 }

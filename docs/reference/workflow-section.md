@@ -3,10 +3,10 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-10-14 (ticket-flow 0.6.0).
+> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
-line under the heading is a template marker, `<!-- ticket-flow workflow: 3 -->`:
+line under the heading is a template marker, `<!-- ticket-flow workflow: 4 -->`:
 the update band offers to run `setup-project` when a project's marker is
 missing or lower than the plugin's (see
 [skills.md](skills.md#update-band)). The number only moves when the template
@@ -29,6 +29,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Max parallel agents | run-epic | 3 |
 | Exclusive resources (never two at once) | deliver-ticket, run-epic | none |
 | The user's own ports and processes agents must never touch or stop (`setup-project` asks, « none » is a valid answer) | deliver-ticket, run-epic | none protected; agents still stop only processes they started |
+| Small changes: what may skip the ticket (one or two lines asked by the user, no new behaviour, no sensitive area; done by the session itself, orchestrator included, with verify, a commit saying why and the usual merge flow) | deliver-ticket, run-epic | that same rule |
 | Project delivery skill, if any | deliver-ticket (defers to it), run-epic | `deliver-ticket` |
 | Docs location and rule | project-docs | `docs/`, same-commit rule |
 
@@ -68,6 +69,14 @@ language. Fields that do not apply are left out, never left as placeholders.
   does not target the default branch); only a human check left → to validate;
   code left → a follow-up ticket, never a ticket left open; open revealed
   tickets.
+
+### Small changes
+- A change I ask for, one or two lines, with no new behaviour and no
+  sensitive area (auth, user data, secrets, SQL, shell, HTML rendering), skips
+  the ticket: the session does it itself, orchestrator included (short
+  branch, verify, commit saying why, usual merge). No `security-reviewer`
+  outside sensitive areas.
+- Anything larger (several files, a behaviour change, a doubt) → a ticket.
 
 ### Epics
 - Run with `run-epic`, in waves, **2 agents in parallel at most** (CI runs on

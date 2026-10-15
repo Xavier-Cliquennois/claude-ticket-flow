@@ -28,6 +28,10 @@ plain list of tickets), not this skill.
 - Which ticket: the one the user named. None named → list the open tickets
   marked « à traiter à la suite » (or the board's « à faire » column) and ask;
   never pick one.
+- No ticket, and the user asks for a one- or two-line change with no new
+  behaviour and no sensitive area: that is the « Petits changements » rule of
+  the Workflow section, not this skill. Do it directly (short branch, verify,
+  commit saying why, merge by the project's flow); do not open a ticket for it.
 - The ticket in full: body AND comments, labels, state, blocked-by, parent epic,
   over REST (see « REST first » below):
   `gh api "repos/$repo/issues/$n"`, `.../issues/$n/comments` (add

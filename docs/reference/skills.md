@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-14 (ticket-flow 0.6.0).
+> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -123,6 +123,10 @@ Two modes: **direct** (in your session, all steps) and **agent** (a `run-epic`
 ticket agent: it stops at step 6 with READY TO MERGE, the orchestrator runs the
 review and says « merge »). The report format is the one below.
 
+Without a ticket, a one- or two-line change the user asks for (no new
+behaviour, no sensitive area) is not this skill: it follows the Workflow
+section's « Small changes » rule and is done directly.
+
 ## run-epic
 
 **Triggers**: "run epic #N", "launch the epic", "run the wave", "autonomous
@@ -133,6 +137,9 @@ See [Running an epic](../guides/running-an-epic.md) for the full walkthrough.
 Key behaviours:
 
 - names the epic or asks; never picks one;
+- a small change the user asks for mid-run (one or two lines, no new
+  behaviour, no sensitive area) is done by the orchestrator itself, between
+  two merges, in a file no agent owns, with no ticket;
 - the epic's tickets are its sub-issues, read at every refresh with
   `gh api --paginate .../sub_issues --jq` (the endpoint pages at 30, even with
   `per_page=100`), checked against the epic's sub-issue total, never from a

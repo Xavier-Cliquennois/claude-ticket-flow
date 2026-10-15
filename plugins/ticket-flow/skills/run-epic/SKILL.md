@@ -9,6 +9,14 @@ You are the orchestrator. Your context is the scarce resource: you never read
 diffs, logs or code yourself; subagents do the work and send you short reports.
 Talk to the user in their language.
 
+One exception: a **small change** the user asks for during the run (the
+« Petits changements » rule of the Workflow section, or by default: one or two
+lines, no new behaviour, no sensitive area) is not a ticket. Do it yourself,
+between two merges, in a file no running agent owns: short branch, verify
+commands, a commit message that says why, merge by the project's flow. Do not
+offer a ticket for it, nor a CLAUDE.md exception. Anything larger goes through
+`write-ticket`.
+
 ## 0. Read the frame
 
 - Project `CLAUDE.md`, section `## Workflow`: tracker, **max parallel agents** (N;

@@ -153,7 +153,7 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 3 -->
+<!-- ticket-flow workflow: 4 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -173,6 +173,10 @@ section is older. Upgrading a section brings it to that number.
 - Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion ; un constat HIGH/MEDIUM bloque la fusion ; un constat hors périmètre devient un ticket `sécurité`.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
 - Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut) ; ne reste qu'une vérification à la main → « à valider » ; reste du code → ticket de suite, jamais un ticket laissé ouvert ; ouvrir les tickets révélés.
+
+### Petits changements
+- Un changement demandé par l'utilisateur, d'une ou deux lignes (une valeur, un réglage, une faute, une phrase de doc), sans comportement nouveau ni zone sensible (auth, données utilisateur, secrets, SQL, shell, rendu HTML), ne passe pas par un ticket. La session le fait elle-même, orchestrateur compris : branche courte, commandes de vérification, commit dont le message dit pourquoi, fusion selon le flux ci-dessus. Pas de `security-reviewer` hors zone sensible.
+- Plus large (plusieurs fichiers, un comportement qui change, un doute sur l'effet) → ticket, comme d'habitude.
 
 ### Épics
 - Lancés avec le skill `run-epic`, par vagues, **<N> agents en parallèle au maximum**.
