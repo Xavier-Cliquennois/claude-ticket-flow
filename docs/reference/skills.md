@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
+> Up to date as of 2026-10-25 (ticket-flow 0.8.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -336,7 +336,8 @@ Key behaviours:
   with no merge pending, it merges `main` into the integration branch in its
   own worktree (any conflict: abort and ask);
 - epic closed only on its own checklist;
-- publishes its stage to `orchestra` when the mod is installed.
+- publishes its stage to `orchestra` when the mod is installed, with the
+  run's progress (tickets merged out of the tickets in the run).
 
 The ticket agent prompt (in the skill) names the PR base (`base=`, the merge target, exactly) and forbids any other, and fixes the report format:
 

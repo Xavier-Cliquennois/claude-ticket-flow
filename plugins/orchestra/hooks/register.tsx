@@ -1,10 +1,25 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { Elements, EngineInterface, Register } from 'claude-code'
 
-import type { AgentRow, ShellRow, Stage } from '../types'
+import type { AgentRow, ShellRow, Stage, Step, StepKind } from '../types'
+import {
+  AVATAR_COLUMNS,
+  AVATAR_ROWS,
+  FRAME_COUNT,
+  HUES,
+  avatarCells,
+  avatarSvg,
+  barSvg,
+  bodyColor,
+  hueColor,
+  progressColors,
+  progressSvg,
+} from './avatar'
 
 const PANE = 'orchestra'
 const TICK_MS = 5000
+// The avatars of running agents step to their next frame this often.
+const FRAME_MS = 700
 const DONE = new Set(['completed', 'failed', 'killed', 'idle'])
 
 const stage = atom({ plugin: 'orchestra', key: 'stage' } as const, null)
@@ -12,6 +27,28 @@ const agents = atom({ plugin: 'orchestra', key: 'agents' } as const, {})
 const shells = atom({ plugin: 'orchestra', key: 'shells' } as const, {})
 const tick = atom({ plugin: 'orchestra', key: 'tick' } as const, 0)
 const commandsOpen = atom({ plugin: 'orchestra', key: 'commandsOpen' } as const, false)
+const frame = atom({ plugin: 'orchestra', key: 'frame' } as const, 0)
+const bandHidden = atom({ plugin: 'orchestra', key: 'bandHidden' } as const, false)
+
+// Steps kept per agent: the newest is drawn in full, the others after it.
+const KEPT_STEPS = 3
+
+const KIND_COLOR: Record<StepKind, string> = {
+  commande: '#ca8a04',
+  lecture: '#16a34a',
+  écriture: '#d97757',
+  recherche: '#0891b2',
+  web: '#0ea5e9',
+  mcp: '#2563eb',
+  agent: '#db2777',
+  outil: '#78716c',
+}
+
+// Desktop sizes, in CSS pixels: the avatar at 5 pixels a sprite pixel.
+const AVATAR_PX_W = AVATAR_COLUMNS * 5
+const AVATAR_PX_H = AVATAR_ROWS * 2 * 5
+const GAUGE_PX_W = 80
+const GAUGE_PX_H = 8
 
 // Commands kept in the pane: every running one, plus the latest ended ones.
 const KEPT_SHELLS = 12
@@ -57,6 +94,37 @@ const tokensText = (n: number): string => {
 const callsText = (n: number): string => `${n} appel${n > 1 ? 's' : ''}`
 
 const isFailed = (row: AgentRow): boolean => row.status === 'failed' || row.status === 'killed'
+
+const baseName = (path: string): string => path.split('/').filter(Boolean).pop() ?? path
+const field = (e: Record<string, unknown>, key: string): string => (typeof e[key] === 'string' ? (e[key] as string) : '')
+
+// A tool call as the pane tells it: its kind and its main argument.
+function describeStep(tool: string, e: Record<string, unknown>, at: number): Step {
+  const step = (kind: StepKind, text: string): Step => ({ kind, text: cut(clean(text).replace(/\s+/g, ' ').trim(), 80), at })
+  if (tool === 'Bash') return step('commande', field(e, 'description') || field(e, 'command'))
+  if (tool === 'Read') return step('lecture', baseName(field(e, 'file_path')))
+  if (tool === 'Grep' || tool === 'Glob') return step('recherche', field(e, 'pattern'))
+  if (tool === 'Edit' || tool === 'Write' || tool === 'MultiEdit') return step('écriture', baseName(field(e, 'file_path')))
+  if (tool === 'NotebookEdit') return step('écriture', baseName(field(e, 'notebook_path')))
+  if (tool === 'WebSearch') return step('web', field(e, 'query'))
+  if (tool === 'WebFetch') {
+    const url = field(e, 'url')
+    return step('web', url.replace(/^https?:\/\//, '').split('/')[0] ?? url)
+  }
+  if (tool === 'Agent' || tool === 'Task') return step('agent', field(e, 'description'))
+  if (tool.startsWith('mcp__')) {
+    const [, server = '', name = ''] = tool.split('__')
+    return step('mcp', `${server} · ${name.replace(/_/g, ' ')}`)
+  }
+  return step('outil', tool)
+}
+
+// "claude-opus-5-5" reads "opus 5.5"; an unknown name is kept as is.
+const shortModel = (model: string): string => {
+  const match = model.match(/(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?!\d)/)
+  if (match === null) return model
+  return match[3] === undefined ? `${match[1]} ${match[2]}` : `${match[1]} ${match[2]}.${match[3]}`
+}
 
 const GAUGE_CELLS = 10
 const ctxColor = (pct: number): string => (pct >= 40 ? 'red' : pct >= 30 ? 'yellow' : 'green')
@@ -124,22 +192,34 @@ async function readTail($: EngineInterface, path: string): Promise<string[] | un
 
 let shellSeq = 0
 
-// Effort counted for a subagent before the tick has listed it (its first
+// What one event adds to a subagent's row: effort, a step, its model.
+type Effort = { toolCalls: number; tokens: number; step?: Step; model?: string; effort?: string }
+// What came in for a subagent before the tick has listed it (its first
 // requests come before the first tick): merged into its row once listed.
+type Pending = { toolCalls: number; tokens: number; steps: Step[]; model?: string; effort?: string }
+
+const withSteps = (steps: Step[] | undefined, step: Step | undefined): Step[] | undefined =>
+  step === undefined ? steps : [...(steps ?? []), step].slice(-KEPT_STEPS)
+
 // Bounded: a loop never listed (a workflow's) would otherwise stay forever,
 // so past MAX_PENDING ids the oldest one is dropped.
-type Effort = { toolCalls: number; tokens: number }
 const MAX_PENDING = 200
-const pendingEffort = new Map<string, Effort>()
+const pendingEffort = new Map<string, Pending>()
 
 async function addEffort($: EngineInterface, id: string, effort: Effort, lastTool?: string): Promise<void> {
   if ((await read($, agents))[id] === undefined) {
-    const pending = pendingEffort.get(id) ?? { toolCalls: 0, tokens: 0 }
+    const pending = pendingEffort.get(id) ?? { toolCalls: 0, tokens: 0, steps: [] }
     if (!pendingEffort.has(id) && pendingEffort.size >= MAX_PENDING) {
       const oldest = pendingEffort.keys().next().value
       if (oldest !== undefined) pendingEffort.delete(oldest)
     }
-    pendingEffort.set(id, { toolCalls: pending.toolCalls + effort.toolCalls, tokens: pending.tokens + effort.tokens })
+    pendingEffort.set(id, {
+      toolCalls: pending.toolCalls + effort.toolCalls,
+      tokens: pending.tokens + effort.tokens,
+      steps: withSteps(pending.steps, effort.step) ?? [],
+      model: effort.model ?? pending.model,
+      effort: effort.effort ?? pending.effort,
+    })
     return
   }
   await update($, agents, rows => {
@@ -151,11 +231,17 @@ async function addEffort($: EngineInterface, id: string, effort: Effort, lastToo
         ...row,
         toolCalls: (row.toolCalls ?? 0) + effort.toolCalls,
         tokens: (row.tokens ?? 0) + effort.tokens,
+        steps: withSteps(row.steps, effort.step),
+        model: effort.model ?? row.model,
+        effort: effort.effort ?? row.effort,
         ...(lastTool === undefined ? {} : { lastTool }),
       },
     }
   })
 }
+
+// True while an agent runs: the avatars' frame moves only then.
+let isAnyRunning = false
 
 // Window size of the session's model, used to turn a subagent's input
 // tokens into a percentage (subagents usually run a model of the same window).
@@ -172,6 +258,35 @@ async function openPane($: EngineInterface): Promise<void> {
   } catch {
     isPaneOpened = false
   }
+}
+
+// The run's progress: a gradient bar, then "done/total tickets". `columns`
+// is the room the whole row may take.
+function progressRow(table: Elements[keyof Elements], isTerminal: boolean, done: number, total: number, columns: number) {
+  const { Box, Text } = table
+  const label = ` ${done}/${total} ticket${total > 1 ? 's' : ''}`
+  const fraction = total === 0 ? 0 : done / total
+  const cells = Math.max(4, Math.min(40, columns - label.length - 1))
+  if (!isTerminal && 'Svg' in table) {
+    const { Svg } = table
+    const px = cells * 7
+    return (
+      <Box flexDirection="row">
+        <Svg source={progressSvg(fraction, px, 10)} alt={`${done} sur ${total} tickets`} width={px} height={10} />
+        <Text bold>{label}</Text>
+      </Box>
+    )
+  }
+  const filled = Math.round(fraction * cells)
+  return (
+    <Box flexDirection="row">
+      {progressColors(filled).map(color => (
+        <Text color={color}>█</Text>
+      ))}
+      <Text dimColor>{'░'.repeat(cells - filled)}</Text>
+      <Text bold>{label}</Text>
+    </Box>
+  )
 }
 
 let lastStatusLine: string | undefined
@@ -200,13 +315,21 @@ export const register: Register = on => {
     await $.tool.register({
       name: 'stage',
       description:
-        "Publish the orchestrator's current stage in the Orchestra pane and status line, one short line (e.g. 'vague 2/3 · t265 relu · t266 en cours'). Call it at every state change of an epic run.",
+        "Publish the orchestrator's current stage in the Orchestra pane, the band above the prompt and the status line, one short line (e.g. 'vague 2/3 · t265 relu · t266 en cours'). Call it at every state change of an epic run. Pass done and total (tickets merged, tickets in the run) to draw the run's progress bar.",
       inputSchema: {
         type: 'object',
-        properties: { text: { type: 'string', description: 'The stage, one line' } },
+        properties: {
+          text: { type: 'string', description: 'The stage, one line' },
+          done: { type: 'integer', minimum: 0, description: 'Tickets merged so far' },
+          total: { type: 'integer', minimum: 1, description: 'Tickets in the run' },
+        },
         required: ['text'],
       },
       isDeferred: false,
+    })
+
+    $.clock.every(FRAME_MS, async () => {
+      if (isAnyRunning) await update($, frame, n => (n + 1) % FRAME_COUNT)
     })
 
     $.clock.every(TICK_MS, async () => {
@@ -214,6 +337,7 @@ export const register: Register = on => {
       const usage = await $.session.usage()
       windowTokens = usage.context.window
       const list = await $.agent.list()
+      isAnyRunning = list.some(info => !DONE.has(info.status))
       await update($, agents, rows => {
         const merged: Record<string, AgentRow> = { ...rows }
         for (const info of list) {
@@ -224,6 +348,7 @@ export const register: Register = on => {
             status: info.status,
             startedAt: now,
             compactions: 0,
+            hue: Object.keys(merged).length % HUES.length,
           }
           const isDone = DONE.has(info.status)
           const pending = pendingEffort.get(info.id)
@@ -231,6 +356,9 @@ export const register: Register = on => {
             ...row,
             toolCalls: (row.toolCalls ?? 0) + (pending?.toolCalls ?? 0),
             tokens: (row.tokens ?? 0) + (pending?.tokens ?? 0),
+            steps: [...(row.steps ?? []), ...(pending?.steps ?? [])].slice(-KEPT_STEPS),
+            model: row.model ?? pending?.model,
+            effort: row.effort ?? pending?.effort,
             label: clean(info.name ? `${info.name} · ${info.description}` : info.description),
             status: info.status,
             endedAt: isDone ? (row.endedAt ?? now) : undefined,
@@ -282,7 +410,10 @@ export const register: Register = on => {
       const runningCount = list.filter(info => !DONE.has(info.status)).length
       const shellCount = Object.values(await read($, shells)).filter(row => row.endedAt === undefined).length
       const parts: string[] = []
-      if (current !== null) parts.push(`▶ ${current.text}`)
+      if (current !== null) {
+        const progress = current.total === undefined ? '' : ` (${current.done ?? 0}/${current.total})`
+        parts.push(`▶ ${current.text}${progress}`)
+      }
       if (runningCount > 0) parts.push(`${runningCount} agent${runningCount > 1 ? 's' : ''} actif${runningCount > 1 ? 's' : ''}`)
       if (shellCount > 0) parts.push(`${shellCount} commande${shellCount > 1 ? 's' : ''}`)
       await writeStatusLine($, parts.join(' · '))
@@ -300,17 +431,31 @@ export const register: Register = on => {
 
   on('tool.call', { tool: 'mcp__orchestra__stage' }, async ($, e) => {
     const text = typeof e.text === 'string' ? e.text : ''
-    const value: Stage = { text: cut(clean(text).trim(), 160), at: await $.clock.now() }
+    const count = (value: unknown): number | undefined =>
+      typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : undefined
+    const done = count(e.done)
+    const total = count(e.total)
+    const hasProgress = done !== undefined && total !== undefined && total > 0
+    const value: Stage = {
+      text: cut(clean(text).trim(), 160),
+      at: await $.clock.now(),
+      ...(hasProgress ? { done: Math.min(done, total), total } : {}),
+    }
     await update($, stage, () => value)
+    await update($, bandHidden, () => false)
     await openPane($)
     return { result: 'Étape affichée.' }
   })
 
-  // Remember each subagent's last tool, and count its tool calls. Counting
-  // never stands in a tool call's way: a failure lets the call run.
+  // Remember each subagent's last tool and its latest steps, and count its
+  // tool calls. Counting never stands in a tool call's way: a failure lets
+  // the call run.
   on('tool.call', async ($, e, next) => {
     const id = e.agentId
-    if (id !== undefined) await addEffort($, id, { toolCalls: 1, tokens: 0 }, e.tool)
+    if (id !== undefined) {
+      const step = describeStep(e.tool, e as unknown as Record<string, unknown>, await $.clock.now())
+      await addEffort($, id, { toolCalls: 1, tokens: 0, step }, e.tool)
+    }
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -327,7 +472,12 @@ export const register: Register = on => {
         const row = rows[id]
         return row === undefined ? rows : { ...rows, [id]: { ...row, contextTokens: tokens } }
       })
-      await addEffort($, id, { toolCalls: 0, tokens: tokens + usage.output_tokens })
+      await addEffort($, id, {
+        toolCalls: 0,
+        tokens: tokens + usage.output_tokens,
+        model: shortModel(e.model),
+        effort: e.effort === undefined ? undefined : String(e.effort),
+      })
     }
     return answered
   })
@@ -440,8 +590,10 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button } = $.ui.resolve(e)
+    const table = $.ui.resolve(e)
+    const { Box, Text, Button } = table
     await read($, tick)
+    const step = await read($, frame)
     const now = await $.clock.now()
     const current = await read($, stage)
     const isOpen = await read($, commandsOpen)
@@ -532,73 +684,144 @@ export const register: Register = on => {
       )
     }
 
+    // The terminal draws cells; the other surfaces draw SVG.
+    const isTerminal = e.surface === 'terminal'
+
     // A context gauge: green under 30 %, yellow from 30 %, red from 40 %.
+    const GAUGE_HEX = { green: '#16a34a', yellow: '#eab308', red: '#dc2626' } as const
     const gauge = (pct: number) => {
-      const filled = Math.min(GAUGE_CELLS, Math.round((pct / 100) * GAUGE_CELLS))
-      return [
-        <Text color={ctxColor(pct)}>{'█'.repeat(filled)}</Text>,
-        <Text dimColor>{'░'.repeat(GAUGE_CELLS - filled)}</Text>,
-        <Text color={ctxColor(pct)} bold>
+      const color = ctxColor(pct) as keyof typeof GAUGE_HEX
+      const label = (
+        <Text color={color} bold>
           {' '}
           {pct} %
-        </Text>,
-      ]
+        </Text>
+      )
+      if (!isTerminal && 'Svg' in table) {
+        const { Svg } = table
+        return [
+          <Svg
+            source={barSvg(pct / 100, GAUGE_HEX[color], GAUGE_PX_W, GAUGE_PX_H)}
+            alt={`contexte ${pct} %`}
+            width={GAUGE_PX_W}
+            height={GAUGE_PX_H}
+          />,
+          label,
+        ]
+      }
+      const filled = Math.min(GAUGE_CELLS, Math.round((pct / 100) * GAUGE_CELLS))
+      return [<Text color={color}>{'█'.repeat(filled)}</Text>, <Text dimColor>{'░'.repeat(GAUGE_CELLS - filled)}</Text>, label]
     }
 
-    // A running agent: name and task with its duration, its context gauge and
-    // last tool, then the command it is running, if any.
+    // An agent's little Claude in its own colour: cells on the terminal, SVG
+    // elsewhere; it steps while the agent runs.
+    const avatar = (row: AgentRow) => {
+      const hue = row.hue ?? 0
+      const body = bodyColor(hue, isFailed(row))
+      const at = row.endedAt === undefined ? step : 0
+      if (isTerminal && 'Raster' in table) {
+        const { Raster } = table
+        return <Raster key={`avatar-${row.id}`} columns={AVATAR_COLUMNS} rows={AVATAR_ROWS} cells={avatarCells(at, body)} />
+      }
+      if ('Svg' in table) {
+        const { Svg } = table
+        return <Svg source={avatarSvg(at, body)} alt={`avatar de ${nameOf(row.label) || 'l’agent'}`} width={AVATAR_PX_W} height={AVATAR_PX_H} />
+      }
+      return <Text color={body}>●</Text>
+    }
+
+    // Its latest steps, newest first: the newest in full with its kind in
+    // colour, the older ones dim after it.
+    const stepsLine = (row: AgentRow) => {
+      const steps = [...(row.steps ?? [])].reverse()
+      const [latest, ...older] = steps
+      if (latest === undefined) return <Text dimColor>{row.lastTool ?? 'démarre…'}</Text>
+      const trail = older.map(item => `‹ ${item.kind} ${item.text}`).join(' ')
+      return (
+        <Box flexDirection="row">
+          <Box flexShrink={0}>
+            <Text color={KIND_COLOR[latest.kind]} bold>
+              ◆ {latest.kind}{' '}
+            </Text>
+          </Box>
+          <Box flexShrink={1}>
+            <Text wrap="truncate-end">{latest.text}</Text>
+          </Box>
+          {trail !== '' && (
+            <Box flexShrink={2}>
+              <Text dimColor wrap="truncate-end">
+                {'  '}
+                {trail}
+              </Text>
+            </Box>
+          )}
+        </Box>
+      )
+    }
+
+    // A running agent: its avatar beside three lines: name, task and duration;
+    // context gauge, model and effort; then the command it runs, or its steps.
     const card = (row: AgentRow) => {
       const elapsed = durationText(now - row.startedAt)
       const name = nameOf(row.label)
       const task = taskOf(row.label)
       const pct = percentOf(row)
       const shell = latestRunning(row.id)
-      // The command it runs, with its age, takes the last tool's place: the
-      // card keeps its height whether a command runs or not.
-      const doing =
-        shell === undefined
-          ? row.lastTool
-          : `⏵ ${shell.description === '' ? shell.command : shell.description} · ${durationText(now - shell.startedAt)}`
-      const detail = [row.compactions > 0 ? `${row.compactions} compact.` : undefined, doing]
+      const hue = hueColor(row.hue ?? 0)
+      const model = [row.model, row.effort].filter(part => part !== undefined && part !== '').join(' · ')
+      const detail = [model === '' ? undefined : model, row.compactions > 0 ? `${row.compactions} compact.` : undefined]
         .filter(part => part !== undefined)
         .join(' · ')
-      const taskRoom = Math.max(4, width - name.length - elapsed.length - 6)
+      const textRoom = width - AVATAR_COLUMNS - 1
+      const taskRoom = Math.max(4, textRoom - name.length - elapsed.length - 3)
       return (
-        <Box flexDirection="column">
-          <Box flexDirection="row">
-            <Box flexShrink={0}>
-              <Text color="cyan" bold>
-                ● {name}
-              </Text>
-            </Box>
-            <Box flexGrow={1} flexShrink={1}>
-              <Text bold wrap="truncate-end">
-                {' '}
-                {cut(task, taskRoom)}
-              </Text>
-            </Box>
-            <Box flexShrink={0}>
-              <Text color="cyan"> {elapsed}</Text>
-            </Box>
+        <Box flexDirection="row" marginTop={1}>
+          <Box flexShrink={0} marginRight={1}>
+            {avatar(row)}
           </Box>
-          <Box flexDirection="row">
-            <Box flexDirection="row" flexShrink={0}>
-              <Text dimColor>{'  ctx '}</Text>
-              {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
-            </Box>
-            {detail !== '' && (
-              <Box flexShrink={1}>
-                <Text dimColor={shell === undefined} color={shell === undefined ? undefined : 'yellow'} wrap="truncate-end">
-                  {' · '}
-                  {cut(detail, Math.max(4, width - GAUGE_CELLS - 16))}
+          <Box flexDirection="column" flexGrow={1} flexShrink={1}>
+            <Box flexDirection="row">
+              <Box flexShrink={0}>
+                <Text color={hue} bold>
+                  {name === '' ? '●' : name}
                 </Text>
               </Box>
+              <Box flexGrow={1} flexShrink={1}>
+                <Text bold wrap="truncate-end">
+                  {' '}
+                  {cut(task, taskRoom)}
+                </Text>
+              </Box>
+              <Box flexShrink={0}>
+                <Text color={hue}> {elapsed}</Text>
+              </Box>
+            </Box>
+            <Box flexDirection="row">
+              <Box flexDirection="row" flexShrink={0}>
+                <Text dimColor>{'ctx '}</Text>
+                {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
+              </Box>
+              {detail !== '' && (
+                <Box flexShrink={1}>
+                  <Text dimColor wrap="truncate-end">
+                    {' · '}
+                    {detail}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+            {shell === undefined ? (
+              stepsLine(row)
+            ) : (
+              <Text color="yellow" bold wrap="truncate-end">
+                ⏵ {shell.description === '' ? shell.command : shell.description} · {durationText(now - shell.startedAt)}
+              </Text>
             )}
           </Box>
         </Box>
       )
     }
-    const CARD_HEIGHT = 2
+    const CARD_HEIGHT = 4
 
     // An ended agent: one line, name, task, then its effort (duration, tool
     // calls, tokens) and context fill. The effort keeps the widest form that
@@ -624,7 +847,9 @@ export const register: Register = on => {
         <Box flexDirection="row">
           <Box flexShrink={0}>
             <Text color={failed ? 'red' : 'green'}>{failed ? '✗' : '✓'} </Text>
-            <Text bold={failed}>{cut(nameOf(row.label), nameWidth).padEnd(nameWidth)} </Text>
+            <Text bold={failed} color={failed ? undefined : hueColor(row.hue ?? 0)}>
+              {cut(nameOf(row.label), nameWidth).padEnd(nameWidth)}{' '}
+            </Text>
           </Box>
           <Box flexGrow={1} flexShrink={1}>
             <Text dimColor wrap="truncate-end">
@@ -701,6 +926,8 @@ export const register: Register = on => {
             inner,
           )
     if (totals !== undefined) room -= 1
+    const hasProgress = current?.total !== undefined
+    if (hasProgress) room -= 1
 
     // Running agents first, whole; the ended ones fill what is left.
     const shownCards: AgentRow[] = []
@@ -741,6 +968,9 @@ export const register: Register = on => {
               <Text dimColor>{stageAge}</Text>
             </Box>
           )}
+          {current !== null &&
+            current.total !== undefined &&
+            progressRow(table, isTerminal, current.done ?? 0, current.total, inner)}
           {totals !== undefined && (
             <Text dimColor wrap="truncate-end">
               {totals}
@@ -759,6 +989,82 @@ export const register: Register = on => {
         {ended.length > 0 && section('TERMINÉS', ended.length, 'green')}
         {shownEnded.map(endedLine)}
         {shownEnded.length < ended.length && <Text dimColor>… {ended.length - shownEnded.length} de plus</Text>}
+      </Box>
+    )
+  })
+
+  // The band above the prompt: the running agents' colours, the stage and the
+  // run's progress. ✕ hides it until the next stage.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const current = await read($, stage)
+    if (e.props.hasSurvey || current === null || (await read($, bandHidden))) return next(e)
+    // Other plugins' bands draw above this one; the engine's own is not nested.
+    const drawn = await next(e)
+    const others = drawn.type === 'engine' ? undefined : drawn
+    const table = $.ui.resolve(e)
+    const { Box, Text, Button } = table
+    const isTerminal = e.surface === 'terminal'
+    await read($, tick)
+    const at = await read($, frame)
+    const now = await $.clock.now()
+    const rows = Object.values(await read($, agents))
+    const running = rows.filter(row => row.endedAt === undefined).sort((a, b) => a.startedAt - b.startedAt)
+    const endedCount = rows.length - running.length
+    const width = Math.max(30, e.props.bodyColumns)
+
+    // One small avatar per running agent on the desktop, a coloured dot each on
+    // the terminal; past 8, a count.
+    const shown = running.slice(0, 8)
+    const crew =
+      !isTerminal && 'Svg' in table
+        ? shown.map(row => {
+            const { Svg } = table
+            return <Svg source={avatarSvg(at, bodyColor(row.hue ?? 0, false))} alt={nameOf(row.label) || 'agent'} width={24} height={18} />
+          })
+        : shown.map(row => <Text color={hueColor(row.hue ?? 0)}>●</Text>)
+    const more = running.length > shown.length ? `+${running.length - shown.length}` : ''
+    const crewWidth = isTerminal ? shown.length + more.length + (shown.length > 0 ? 1 : 0) : 0
+    const head = `ORCHESTRA ▶ ${clean(current.text)}`
+    const age = ` ${durationText(now - current.at)}`
+    const counts = [
+      running.length > 0 ? `${running.length} actif${running.length > 1 ? 's' : ''}` : undefined,
+      endedCount > 0 ? `${endedCount} fini${endedCount > 1 ? 's' : ''}` : undefined,
+    ]
+      .filter(part => part !== undefined)
+      .join(' · ')
+
+    return (
+      <Box flexDirection="column">
+        {others}
+        <Box flexDirection="row">
+          {shown.length > 0 && (
+            <Box flexDirection="row" flexShrink={0} marginRight={1}>
+              {crew}
+              {more !== '' && <Text dimColor>{more}</Text>}
+            </Box>
+          )}
+          <Box flexShrink={1}>
+            <Text bold color="claude" wrap="truncate-end">
+              {cut(head, Math.max(8, width - crewWidth - age.length - 4))}
+            </Text>
+          </Box>
+          <Box flexShrink={0}>
+            <Text dimColor>{age} </Text>
+            <Button key="band-close" label="✕" plain dimColor onPress={() => update($, bandHidden, () => true)} />
+          </Box>
+        </Box>
+        {(current.total !== undefined || counts !== '') && (
+          <Box flexDirection="row">
+            {current.total !== undefined &&
+              progressRow(table, isTerminal, current.done ?? 0, current.total, Math.min(60, width - counts.length - 4))}
+            {counts !== '' && (
+              <Text dimColor>
+                {current.total === undefined ? '' : ' · '}
+                {counts}
+              </Text>
+            )}
+          </Box>
+        )}
       </Box>
     )
   })

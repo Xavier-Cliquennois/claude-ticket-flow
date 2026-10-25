@@ -1,7 +1,7 @@
 {
   "name": "orchestra",
-  "version": "0.5.0",
-  "description": "Live view of an orchestrator session: clock, current stage, and each subagent's status, duration, last tool and context fill, and the shell commands they run with the live tail of background ones",
+  "version": "0.6.0",
+  "description": "Live view of an orchestrator session: clock, current stage and run progress, each subagent with its pixel avatar, status, duration, context fill, model, effort and latest steps, the shell commands they run with the live tail of background ones, and a band above the prompt",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Xavier Cliquennois"

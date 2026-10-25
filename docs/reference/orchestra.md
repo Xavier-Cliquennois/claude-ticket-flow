@@ -3,7 +3,7 @@
 What the optional `orchestra` mod shows, how the orchestrator feeds it, and its
 limits.
 
-> Up to date as of 2026-10-14 (orchestra 0.5.0). Uses the Claude Code mods
+> Up to date as of 2026-10-25 (orchestra 0.6.0). Uses the Claude Code mods
 > API, which is in early access and may change between releases.
 
 ## What it shows
@@ -15,23 +15,22 @@ published, and on demand with `/orchestra`:
 ╭──────────────────────────────────────────────────────────────────╮
 │ ORCHESTRA                12:44 · 2 actifs · 8 finis · 1 en échec │
 │ ▶ vague 2/3 · t486 fusionné · t487 t488 en cours 3 min           │
+│ ███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 5/12 tickets           │
 │ Σ 12 agents · 582 appels · 41 M tok                              │
-│ ⏵ orchestrateur · Wait for CI on PR #436 · 6 min · fond          │
-│   $ gh pr checks 436 --watch                                     │
-│   │ e2e     pending                                              │
 ╰──────────────────────────────────────────────────────────────────╯
 
 EN COURS · 2 ───────────────────────────────────────────────────────
-● t488 XAV-488 bouton relancer le paiement                   4 min
-  ctx ██░░░░░░░░ 18 % · Bash
-  ⏵ Type-check the app · 18 s
-    $ npx tsc --noEmit -p .
-● t487 XAV-487 export CSV des commandes                     12 min
-  ctx ███░░░░░░░ 34 % · Edit
-  ⏵ Run export tests · 1 min · fond
-    $ npm run test -- src/export/orders.test.ts
-    │ ✓ escapes quotes in names (4 ms)
-    │ ● streams 10 000 rows…
+
+ ▄▄▄▄▄▄  t488 XAV-488 bouton relancer le paiement             4 min
+▄██████▄ ctx ██░░░░░░░░ 18 % · sonnet 5.5 · medium
+ █▀██▀█  ⏵ Type-check the app · 18 s
+
+ ▄▄▄▄▄▄  t487 XAV-487 export CSV des commandes               12 min
+▄██████▄ ctx ███░░░░░░░ 34 % · opus 5.5 · high
+ █▀██▀█  ◆ écriture export.ts  ‹ lecture orders.ts
+
+▸ COMMANDES · 3 en cours ───────────────────────────────────────────
+⏵ t488 · Type-check the app · depuis 18 s · +2
 
 TERMINÉS · 9 ───────────────────────────────────────────────────────
 ✓ sec-486 Security revi…   1 min ·   7 appels ·   75 k tok   5 %
@@ -40,14 +39,34 @@ TERMINÉS · 9 ─────────────────────�
 … 6 de plus
 ```
 
+And above the prompt, the band:
+
+```
+●● ORCHESTRA ▶ vague 2/3 · t486 fusionné · t487 t488 en cours 3 min ✕
+███████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 5/12 tickets · 2 actifs · 9 finis
+```
+
+Open `plugins/orchestra/preview/index.html` for the colours: each agent has its
+own, its avatar walks while it runs, the steps are coloured by kind and the bar
+goes from light to deep orange.
+
 - **Header frame**: clock, running / ended / failed counts, the current stage
-  and how long ago it was published, and the run's totals (`Σ`): agents, tool
-  calls and tokens, running agents included, live.
-- **EN COURS**: one two-line card per running agent: name, task and duration;
-  a **context gauge** (green under 30 %, yellow from 30 %, red from 40 %),
-  compactions, and the last tool, or, while the agent runs a command, that
-  command and how long it has run. A card keeps its height whether a command
-  runs or not, so the pane does not jump as commands follow one another.
+  and how long ago it was published, the run's **progress bar** (tickets
+  merged out of the tickets in the run, when the orchestrator gives them), and
+  the run's totals (`Σ`): agents, tool calls and tokens, running agents
+  included, live.
+- **EN COURS**: one card per running agent, its **avatar** beside three lines.
+  The avatar is a little pixel Claude in the agent's own colour (eight
+  colours, handed out in turn), drawn with half blocks in the terminal and as
+  SVG on the desktop; it walks while the agent runs. Then: name (in its
+  colour), task and duration; a **context gauge** (green under 30 %, yellow
+  from 30 %, red from 40 %), the **model and effort** of its latest request
+  (`opus 5.5 · high`) and compactions; and, while the agent runs a command,
+  that command and how long it has run, otherwise its **latest steps**, newest
+  first: the newest in full with its kind in colour (`◆ écriture export.ts`),
+  the two before it dim. Kinds: commande, lecture, écriture, recherche, web,
+  mcp, agent, outil. A card keeps its height whether a command runs or not,
+  so the pane does not jump as commands follow one another.
 - **COMMANDES**: a foldable block, folded by default. Folded, it is one line:
   the newest running command, who runs it and since when (`depuis 12 s`, `+N`
   when others run too), else the last one ended (`fini il y a 3 s`). A click
@@ -57,14 +76,20 @@ TERMINÉS · 9 ─────────────────────�
   seconds.
 - **TERMINÉS**: one aligned line per ended agent, newest first: ✓ or ✗, name,
   task, then its effort: duration, tool calls and tokens, then its context
-  fill (coloured from 30 %); `failed` or `killed` spelled out. Figures are
+  fill (coloured from 30 %); `failed` or `killed` spelled out. The name keeps
+  the agent's colour (a failed one is in bold, uncoloured). Figures are
   integers: tokens past 10 000 in `k`, past 10 000 000 in `M`. On a narrow
   pane the line never wraps: the context fill goes first, then the effort
   shortens (`27 min ·  90 app ·   4647 k`), then only the duration is left.
   What does not fit ends in `… N de plus`.
 
+**The band above the prompt** shows as soon as a stage is published: one dot
+per running agent in its colour (on the desktop, its small avatar), the stage
+and its age, then the progress bar and the running / ended counts. `✕` hides
+it until the next stage. Another mod's band stays above it.
+
 **A status-line file**: `~/.claude/state/orchestra/<session id>.txt` holds one
-line (`▶ <stage> · N agents actifs`), empty when idle. Point your status line at
+line (`▶ <stage> (done/total) · N agents actifs`), empty when idle. Point your status line at
 it (below).
 
 ## How it works
@@ -75,16 +100,21 @@ flowchart LR
   O -->|"shell commands"| M
   S["subagents"] -->|"tool calls, model steps, compactions"| M
   M --> P["/orchestra pane"]
+  M --> B["band above the prompt"]
   M --> F["state file"]
   F --> L["status line (ccstatusline)"]
 ```
 
-- **Stage**: the mod registers a tool, `mcp__orchestra__stage({ text })`.
+- **Stage**: the mod registers a tool, `mcp__orchestra__stage({ text, done,
+  total })`, `done` and `total` optional (tickets merged, tickets in the run;
+  whole numbers, `done` capped at `total`, ignored unless both are given).
   `run-epic` calls it at each state change; any session can.
 - **Agents**: every 5 seconds the mod lists the session's agents
-  (`$.agent.list()`); it records each subagent's last tool (`tool.call`), its
-  context fill from the input tokens of its latest model request
-  (`turn.step`), and its compactions (`session.compact`).
+  (`$.agent.list()`); it records each subagent's last three tool calls
+  (`tool.call`: kind and main argument, a file's name rather than its path),
+  its context fill, model and effort from its latest model request
+  (`turn.step`), and its compactions (`session.compact`). The avatars move
+  every 700 ms, only while an agent runs.
 - **Effort**: the mod counts each subagent's tool calls (one per `tool.call`
   it makes) and its tokens (every `turn.step` of its loop: input, cache reads,
   cache writes and output, summed), from its own events alone. What comes

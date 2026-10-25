@@ -1,4 +1,11 @@
-export type Stage = { text: string; at: number }
+// The run's progress, when the orchestrator gives it: tickets merged out of
+// the tickets planned. Optional: a stage kept from an earlier version has none.
+export type Stage = { text: string; at: number; done?: number; total?: number }
+
+// What a tool call did, sorted for its colour in the pane.
+export type StepKind = 'commande' | 'lecture' | 'écriture' | 'recherche' | 'web' | 'mcp' | 'agent' | 'outil'
+
+export type Step = { kind: StepKind; text: string; at: number }
 
 export type AgentRow = {
   id: string
@@ -15,6 +22,13 @@ export type AgentRow = {
   // a row kept from an earlier version reads as 0.
   toolCalls?: number
   tokens?: number
+  // Its latest tool calls, newest last, and the model and effort of its latest
+  // request. Optional for the same reason.
+  steps?: Step[]
+  model?: string
+  effort?: string
+  // Its avatar's colour, an index in the mod's palette, handed out in turn.
+  hue?: number
 }
 
 export type ShellRow = {
@@ -43,6 +57,10 @@ declare module 'claude-code' {
       tick: number
       // Whether the COMMANDES block is unfolded.
       commandsOpen: boolean
+      // The avatars' animation frame, moved while an agent runs.
+      frame: number
+      // The band above the prompt was closed: it comes back with the next stage.
+      bandHidden: boolean
     }
   }
 }

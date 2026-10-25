@@ -11,7 +11,7 @@
     {
       "name": "orchestra",
       "source": "./plugins/orchestra",
-      "description": "Mod: live pane of an orchestrator session (stage, subagents, their context fill, shell commands with live output) and a status-line file"
+      "description": "Mod: live pane of an orchestrator session (stage and progress, subagents with pixel avatars, context fill, model and latest steps, shell commands with live output), a band above the prompt and a status-line file"
     }
   ]
 }

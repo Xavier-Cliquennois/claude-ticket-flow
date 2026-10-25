@@ -779,7 +779,9 @@ the other slots busy.
 
 Progress visibility: at each state change, call `mcp__orchestra__stage` with a
 one-line stage ("vague 2/3 · t265 relu · t266 en cours") if the tool exists (the
-`orchestra` mod). Otherwise print that line in the terminal.
+`orchestra` mod), with `done` (tickets merged so far) and `total` (tickets in
+the run) so the mod draws the run's progress bar. Otherwise print that line in
+the terminal, followed by `done/total`.
 
 Waiting: subagents notify you when they finish. Do not poll them, do not read
 their transcripts.
