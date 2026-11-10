@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.10.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 ## The size gate
 
@@ -48,6 +48,7 @@ labels are never renamed or recolored.
 | `model:sonnet` | The ticket says what to do and how to verify it |
 | `effort:medium` | The agent runs at effort `medium`: most tickets |
 | `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`); the usual effort for `model:fable` |
+| `challenger` | Before the merge, the `challenger` agent re-proves the "done when" boxes instead of trusting the delivery report. On any of: `model:opus` or `model:fable`, `effort:high`, `taille:M`, `sécurité`, a box proved by a judgment (diagnosis, bug fixed with no reproducing test, performance). Not on a `taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all commands |
 | `epic` | Parent of a wave of sub-issues (optional in Linear) |
 | `taille:S` | Under half a human day, 1-3 files |
 | `taille:M` | One human day at most, one responsibility |

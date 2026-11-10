@@ -101,6 +101,18 @@ orchestrator runs the read-only `security-reviewer` agent on the branch.
 HIGH or MEDIUM findings in scope block the merge and go back to the agent;
 findings outside the ticket's scope become `sécurité` tickets and do not block.
 
+### A challenger on the tickets that need one
+
+A delivery agent proves its own « done when » boxes. On a ticket labelled
+`challenger`, the orchestrator does not take its word: the read-only
+`challenger` agent, run next to the security review on the same commit,
+re-proves each box, re-runs the project's checks and verifies the tests
+would fail without the change. The label goes on any ticket that is not
+small and framed: `model:opus` or `model:fable`, `effort:high`, `taille:M`,
+`sécurité`, or a box proved by a judgment rather than a command. A
+`taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all
+commands goes without it.
+
 ### One merge at a time
 
 Merges are serialized across the whole epic, so each one lands on a branch

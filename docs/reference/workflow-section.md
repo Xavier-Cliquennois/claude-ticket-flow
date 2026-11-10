@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.10.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
 line under the heading is a template marker, `<!-- ticket-flow workflow: 5 -->`:
@@ -63,7 +63,9 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Browser (UI): Chrome first; Playwright if Chrome is closed or fails 2-3
   times; otherwise write "browser test NOT DONE" and why.
 - Review: `security-reviewer` on the diff before any merge; HIGH/MEDIUM block;
-  out-of-scope findings become `sécurité` tickets.
+  out-of-scope findings become `sécurité` tickets. A `challenger` ticket also
+  goes through the `challenger` agent (in parallel, same commit); its
+  BLOCKING blocks the merge.
 - Merge: PR to `main`, merge commit, after green CI.
 - Closing: tick "done when" boxes as you go, comment what was checked, close
   it yourself when every box is ticked (`Closes #N` does nothing when the merge

@@ -1,6 +1,6 @@
 ---
 name: deliver-ticket
-description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
+description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent (and the challenger agent for a `challenger` ticket), merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
 ---
 
 # deliver-ticket
@@ -212,7 +212,7 @@ shows it live:
 - Commit per the CLAUDE.md (message language, Conventional Commits, ticket
   reference such as `#N` / `ABC-N`). Small commits are fine; no unrelated files.
 
-## 6. Security review
+## 6. Security review and challenger
 
 - Agent mode: stop here. Send the report (step 9) with ÉTAT « PRÊT À
   FUSIONNER » and wait. On findings, fix them and report again. On
@@ -222,6 +222,12 @@ shows it live:
     comment the ticket, tell the user.
   - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
     (`write-ticket`).
+- Direct mode, ticket labelled `challenger`: run the `challenger` agent too,
+  in parallel, on the same head (`effort: "high"`, `model: "sonnet"` for a
+  `model:sonnet` ticket, `"opus"` otherwise). BLOQUANT → fix, then re-run both
+  reviews on the new head (two BLOQUANT rounds in a row → stop, as above).
+  OK AVEC RÉSERVES → show the réserves to the user with the step 7 report.
+  A box it marks « non prouvé » is not ticked.
 
 ## 7. Merge
 

@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
+description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, `challenger` when the delivery needs a second check, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
 ---
 
 # write-ticket
@@ -77,6 +77,19 @@ Effort, only two levels (no other value exists):
 
 Raise the effort before the model: an `opus` / `effort:high` ticket is often
 enough where `fable` is tempting.
+
+Challenger (`challenger` label): before the merge, the `challenger` agent
+re-proves the « Fini quand » itself instead of trusting the delivery report.
+Add the label when that report alone is not enough to trust, i.e. any of:
+- `model:opus` or `model:fable` (the agent made choices the ticket did not
+  settle);
+- `effort:high`, `taille:M` or `sécurité`;
+- a box proved by a judgment rather than a command result (a diagnosis, a bug
+  « fixed » with no test that reproduces it, a performance claim).
+
+Leave it off a small framed ticket: `taille:S`, `model:sonnet`,
+`effort:medium`, every box proved by a command anyone can rerun. A box that
+needs a human eye does not call for it: the challenger cannot tick it either.
 
 ## 4. Default template (child ticket)
 
@@ -188,7 +201,7 @@ tests not written). A box that only needs a manual check never makes a
 follow-up ticket: #N stays open in « à valider ».
 
 Title: « <titre de #N> : reste <quoi> ». Labels: model, effort and size of what is
-left (size gate as usual), same type as #N; a `sécurité` #N passes on its
+left (and `challenger` by the rule of §3) (size gate as usual), same type as #N; a `sécurité` #N passes on its
 label and its `security-reviewer` box.
 
 ```markdown

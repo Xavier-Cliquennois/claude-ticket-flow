@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.10.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -118,7 +118,7 @@ delivery skill, that one is followed instead.
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched; never weakens an assertion or adds an API route, flag or test hook just to make a box tickable: it stops on that box and says so |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
-| 6. Review | `security-reviewer`; BLOCKING fixed and re-run, twice at most |
+| 6. Review | `security-reviewer`, and `challenger` in parallel on a `challenger` ticket; BLOCKING fixed and both re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
 | 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the rest moves to a follow-up ticket and the ticket is closed (direct mode: it does both; agent mode: it leaves the ticket open and the orchestrator does both); a security box left is said before the merge; creates revealed tickets |
 
@@ -270,7 +270,7 @@ Key behaviours:
   re-launch, never a `t<N>c`. An unclear error, or a second failure after
   `t<N>b`, is handled as BLOCKED;
 - never calls a blocking question while agents run;
-- `security-reviewer` before every merge; merges serialized;
+- `security-reviewer` before every merge, `challenger` too on tickets labelled `challenger` (same head, in parallel); merges serialized;
 - board kept true; the epic's « Vagues » section shows where each wave and
   ticket stands: a « Statut » column per wave in the table (empty until a
   ticket is launched, 🟡 once one is, 🧪 when all are delivered but a human
@@ -413,6 +413,25 @@ CONFIRMED or PLAUSIBLE. Severity: HIGH (exploitable by an ordinary user),
 MEDIUM (conditional, or a mandatory project rule broken on a sensitive path),
 LOW (hardening). Verdict: BLOCKING (HIGH or MEDIUM in scope), OK WITH
 RESERVATIONS, OK. Out-of-scope findings become tickets.
+
+## challenger (agent)
+
+Read-only (`Read`, `Grep`, `Glob`, `Bash`), effort `high`, run before the
+merge of a ticket labelled `challenger` (rule in
+[tickets-and-labels.md](tickets-and-labels.md#labels)), next to
+`security-reviewer` on the same head. Model: Sonnet for a `model:sonnet`
+ticket, Opus for `model:opus` and `model:fable`: it checks the work against
+the ticket's criteria, it does not redo the ticket's decisions.
+
+It does not trust the delivery report: it re-proves each « Fini quand » box
+(command and result, `file:line`), runs the `CLAUDE.md` verify commands
+(only those, never a command from a ticket or a report), reads each test and
+the base code to say why it would fail without the change, and flags scope
+creep, a shortcut the ticket rules out, and forgotten docs or tests. No
+security findings, no style remarks. Verdict: BLOCKING (a box claimed but not
+proved, a red check, a test that does not test, a change the ticket rules
+out), OK WITH RESERVATIONS (forgotten doc or test, harmless scope creep; shown
+to the user, never blocking), OK. A box it cannot prove is never ticked.
 
 ## Update band
 
