@@ -101,8 +101,11 @@ skill owns; never recolor or rename the user's existing labels). Standard set:
 
 | Label | Color | Description |
 |---|---|---|
-| `model:opus` | `7B61FF` | Décision d'architecture/produit ambiguë, bug intermittent, gros périmètre à trancher soi-même |
+| `model:fable` | `B8336A` | Choix à trancher où une erreur coûterait cher et se verrait mal : conception sécurité, bug de concurrence, migration de données, socle d'épic |
+| `model:opus` | `7B61FF` | Décision d'architecture/produit ambiguë, investigation, périmètre à trancher soi-même |
 | `model:sonnet` | `0E8A16` | Travail cadré : le ticket dit quoi faire et comment le vérifier |
+| `effort:normal` | `D4C5F9` | Effort par défaut de l'agent |
+| `effort:high` | `5319E7` | La justesse compte plus que le temps : sécurité, données, concurrence, contrat public, chemin critique |
 | `epic` | `3E4B9E` | Parent d'une vague de sous-tickets |
 | `taille:S` | `C2E0C6` | Moins d'une demi-journée humaine, 1 à 3 fichiers |
 | `taille:M` | `FEF2C0` | Une journée humaine au plus, une seule responsabilité |
@@ -113,8 +116,8 @@ reuse GitHub's defaults when present. Keep project-specific taxonomies that
 already exist (e.g. `gain`/`validation` or `phase:N` labels) and document
 them; don't replace them.
 
-For Linear, create the equivalent labels in a "Modèle IA" group and a "Taille"
-group through the Linear MCP, only after a yes.
+For Linear, create the equivalent labels in a "Modèle IA" group (Fable, Opus,
+Sonnet), an "Effort" group (Normal, High) and a "Taille" group through the Linear MCP, only after a yes.
 
 For a GitHub Project board, install the card mover, after the same yes: copy
 `${CLAUDE_PLUGIN_ROOT}/scripts/move-card` to `.claude/scripts/move-card` in the
@@ -153,7 +156,7 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 4 -->
+<!-- ticket-flow workflow: 5 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -163,7 +166,7 @@ section is older. Upgrading a section brings it to that number.
 - Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau) ; jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
 - Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé ; seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
-- Labels obligatoires : un type, `model:opus|sonnet`, `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
+- Labels obligatoires : un type, `model:fable|opus|sonnet`, `effort:normal|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.
 
 ### Livrer un ticket

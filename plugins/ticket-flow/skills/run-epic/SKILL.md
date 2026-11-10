@@ -69,7 +69,8 @@ offer a ticket for it, nor a CLAUDE.md exception. Anything larger goes through
 ## 1. Pre-flight (before launching anything)
 
 - Every open child must pass the size gate of `write-ticket`, carry
-  `model:opus|sonnet` and a "Fini quand". Fix what is missing; split what is too
+  `model:fable|opus|sonnet`, `effort:normal|high` and a "Fini quand" (rules
+  in `write-ticket` §3; an older ticket with no effort label gets one now). Fix what is missing; split what is too
   big (new sub-issues, update the epic table). Do this BEFORE launching: a ticket
   too big for one agent is the main cause of agents that run out of context.
 - Build the waves: blocked-by order, then no two tickets touching the same files in
@@ -181,7 +182,8 @@ your state, never read back as input**:
   it. The new section is rebuilt from the waves of your validated plan, the
   tickets "Only your plan moves" allows, and the states above.
 - **What you write**: ticket numbers (integers from the validated sub-issue
-  list), the model (`opus` / `sonnet`, from the label), wave numbers, the
+  list), the model and effort (`<modèle>/<effort>`, `fable` / `opus` / `sonnet` and
+  `normal` / `high`, from the labels), wave numbers, the
   emoji and classDef names below, the fixed legend. "Pourquoi" holds a few of
   your own words from the plan you published: letters, digits, spaces and
   plain punctuation (`.,;:'-`) only, no `@`, `<`, `>`, `[`, `]`, `(`, `)`,
@@ -226,9 +228,9 @@ Example, wave 1 done, wave 2 running, wave 3 not started:
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
-| 1 | #41 (opus), #42 (sonnet) | rien | socle commun | ✅ |
-| 2 | #43 (sonnet), #44 (opus) | #41 | écrans | 🟡 |
-| 3 | #45 (sonnet) | #43, #44 | nettoyage | |
+| 1 | #41 (fable/high), #42 (sonnet/normal) | rien | socle commun | ✅ |
+| 2 | #43 (sonnet/normal), #44 (opus/high) | #41 | écrans | 🟡 |
+| 3 | #45 (sonnet/normal) | #43, #44 | nettoyage | |
 
 ```mermaid
 flowchart LR
@@ -499,7 +501,9 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
 running agent touches its files. Launch with the Agent tool:
 `run_in_background: true`, `name: "t<N>"` (so SendMessage and the panel show it),
-`model` from the label (`opus` / `sonnet`), `description: "#<N> <titre court>"`,
+`model` from the model label (`fable` / `opus` / `sonnet`), `effort` from
+the effort label (`effort:normal` → `medium`, `effort:high` → `high`; never
+another value), `description: "#<N> <titre court>"`,
 and the prompt below.
 
 When an agent reports, first compare the config snapshot (above),
@@ -676,7 +680,7 @@ then:
      rather than start a second one." A resume is not a re-launch.
    - New agent only if the old one cannot be resumed (SendMessage fails, the
      agent is gone, or any second API or network failure after its resume:
-     one resume per agent). Name `t<N>b`, same model, the prompt below plus: "your worktree
+     one resume per agent). Name `t<N>b`, same model and effort, the prompt below plus: "your worktree
      `<wt>` and branch `<branch>` already exist (HEAD <sha>, <k> commits
      ahead of <base>, <m> uncommitted files): work in them, create no new
      worktree or branch; run `git log <base>..HEAD` and `git status`

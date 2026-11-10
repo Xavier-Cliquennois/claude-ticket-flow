@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.9.0).
 
 ## The size gate
 
@@ -23,7 +23,7 @@ Any signal in the last column means split. There is no size L.
 
 ### How tickets are split, in order of preference
 
-1. **Decide first**: undecided questions become a short `model:opus` ticket
+1. **Decide first**: undecided questions become a short `model:opus` / `effort:normal` ticket
    whose "done when" is the decision written into the epic.
 2. **Investigate first**: "find out why" becomes its own ticket ending with a
    measurement or a diagnosis, not a fix.
@@ -43,8 +43,11 @@ labels are never renamed or recolored.
 
 | Label | Meaning |
 |---|---|
-| `model:opus` | Ambiguous architecture or product decision, intermittent bug, large scope the agent must decide itself, security-sensitive design |
+| `model:fable` | A choice the ticket does not settle where a mistake would be costly and hard to see: security-sensitive design, intermittent or concurrency bug, real-data migration, foundation of an epic, a ticket an opus agent already failed. Claude Fable 5.2, about twice Opus's price |
+| `model:opus` | Ambiguous architecture or product decision, investigation, a scope the agent must decide itself |
 | `model:sonnet` | The ticket says what to do and how to verify it |
+| `effort:normal` | Default effort (the agent runs at `medium`) |
+| `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`); the usual effort for `model:fable` |
 | `epic` | Parent of a wave of sub-issues (optional in Linear) |
 | `taille:S` | Under half a human day, 1-3 files |
 | `taille:M` | One human day at most, one responsibility |
@@ -52,7 +55,11 @@ labels are never renamed or recolored.
 
 Plus a type label (`bug`, `feature`, …; GitHub's defaults are reused) and any
 project-specific taxonomy you already have, which is kept and documented.
-In Linear, the same labels live in a "Modèle IA" group and a "Taille" group.
+Every ticket has exactly one model label and one effort label; there are
+only two effort levels. Raise the effort before the model: `opus` at
+`effort:high` is often enough where `fable` is tempting.
+In Linear, the same labels live in a "Modèle IA" group (Fable / Opus /
+Sonnet), an "Effort" group (Normal / High) and a "Taille" group.
 
 ## Templates
 

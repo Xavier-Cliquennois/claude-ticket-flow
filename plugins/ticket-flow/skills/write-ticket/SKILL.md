@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/size/type labels, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
+description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
 ---
 
 # write-ticket
@@ -17,8 +17,8 @@ the default one below; the size gate and the labels apply everywhere.
   on the same subject (`q=$(mktemp)`, the words written in it under the heredoc rule of `deliver-ticket`, « REST first », then `gh api -X GET search/issues -F q=@"$q"` with `repo:$repo` in the file; never the words inside double quotes). Don't open
   a duplicate: comment on the existing one instead.
 - Name the files likely touched. A ticket whose files you cannot name is not
-  understood yet: explore more, or make it a short `model:opus` investigation
-  ticket whose deliverable is the real tickets.
+  understood yet: explore more, or make it a short `model:opus` / `effort:normal`
+  investigation ticket whose deliverable is the real tickets.
 
 ## 2. The size gate (the most important step)
 
@@ -50,15 +50,33 @@ How to split, in this order of preference:
 Each piece must pass the gate on its own. The pieces become sub-issues of an epic
 (existing or new).
 
-## 3. Model label
+## 3. Model and effort labels
 
-- `model:opus`: ambiguous architecture or product decision, intermittent bug,
-  large scope the agent must decide itself, security-sensitive design.
-- `model:sonnet`: the ticket says what to do and how to verify it; mechanical or
-  well-located change; a11y/i18n/style fixes checked in the DOM.
+Every ticket carries one model label and one effort label: `run-epic` launches
+its agent with exactly those.
 
-When unsure, the question is: "does the agent have to choose between options the
-ticket does not settle?" Yes → opus.
+Model, by the question "does the agent have to choose between options the
+ticket does not settle?":
+- No → `model:sonnet`: the ticket says what to do and how to verify it;
+  mechanical or well-located change; a11y/i18n/style fixes checked in the DOM.
+- Yes → `model:opus`: ambiguous architecture or product decision, an
+  investigation, a scope the agent must decide itself.
+- Yes, and a wrong choice would be costly and hard to see in the "Fini quand"
+  checks → `model:fable` (Claude Fable 5.2, the most capable model, about
+  twice Opus's price: kept for these). Signs: security-sensitive design, an
+  intermittent or concurrency bug that resists diagnosis, a migration of real
+  data, a foundation many tickets of the epic build on, a ticket an opus agent
+  already failed.
+
+Effort, only two levels (no other value exists):
+- `effort:high`: correctness matters more than time: `sécurité` label, data
+  migration, concurrency, a public API or contract, a ticket on the epic's
+  critical path, a bug already missed once. A `model:fable` ticket is
+  `effort:high` unless it is a short decision ticket.
+- `effort:normal`: everything else, most tickets.
+
+Raise the effort before the model: an `opus` / `effort:high` ticket is often
+enough where `fable` is tempting.
 
 ## 4. Default template (child ticket)
 
@@ -110,8 +128,8 @@ Créé par : @<login>, le <date>.
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
-| 1 | #a (opus), #b (sonnet) | rien | pourquoi ensemble | |
-| 2 | #c (opus) | #a | <raison> | |
+| 1 | #a (opus/high), #b (sonnet/normal) | rien | pourquoi ensemble | |
+| 2 | #c (fable/high) | #a | <raison> | |
 
 Chemin critique : #a → #c.
 Règle : deux tickets qui touchent les mêmes fichiers ne sont jamais dans la même vague.
@@ -169,7 +187,7 @@ A **follow-up ticket** carries what a merged ticket #N left undone (code or
 tests not written). A box that only needs a manual check never makes a
 follow-up ticket: #N stays open in « à valider ».
 
-Title: « <titre de #N> : reste <quoi> ». Labels: model and size of what is
+Title: « <titre de #N> : reste <quoi> ». Labels: model, effort and size of what is
 left (size gate as usual), same type as #N; a `sécurité` #N passes on its
 label and its `security-reviewer` box.
 
@@ -270,7 +288,7 @@ epic included, and set its fields.
   --id <item> --project-id <pid> --field-id <fid> --single-select-option-id <oid>`.
 
 Linear: `save_issue` through the Linear MCP with the same body, `assignee`, labels from the
-"Modèle IA" and "Taille" groups, `parentId` for children, `relatedTo` for
+"Modèle IA", "Effort" and "Taille" groups, `parentId` for children, `relatedTo` for
 carve-outs. In Linear an epic is a parent issue (its children carry `parentId`)
 or a Linear project; an `epic` label is optional, never required to find one.
 

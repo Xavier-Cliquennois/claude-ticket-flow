@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-10-25 (ticket-flow 0.8.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.9.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -70,8 +70,11 @@ this", tickets revealed during a delivery.
    ticket becomes a short investigation ticket.
 2. **Size gate**: scores the ticket and splits it if too big
    ([details](tickets-and-labels.md#the-size-gate)).
-3. **Model label**: `model:opus` if the agent must choose between options the
-   ticket does not settle, else `model:sonnet`.
+3. **Model and effort labels**: `model:sonnet` if the ticket settles what to
+   do, `model:opus` if the agent must choose between options it does not
+   settle, `model:fable` if that choice is costly and hard to check; then
+   `effort:normal` or `effort:high` (correctness over time)
+   ([details](tickets-and-labels.md#labels)).
 4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
    or follow-up « suite de #N » for what a merged ticket left undone: its
    boxes are the original's unticked boxes copied word for word, the delivery
@@ -110,7 +113,7 @@ delivery skill, that one is followed instead.
 | Step | Does |
 |---|---|
 | 0. Frame | reads `## Workflow`, the ticket with its comments, blockers, an existing worktree to resume |
-| 1. Gate | « done when », model label, size gate; too big → proposes a split and does not start |
+| 1. Gate | « done when », model and effort labels, size gate; too big → proposes a split and does not start |
 | 2. Start | board → in progress (`move-card` from the CLAUDE.md, `gh project` fallback), worktree per convention, exclusive resources one at a time |
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched; never weakens an assertion or adds an API route, flag or test hook just to make a box tickable: it stops on that box and says so |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
@@ -153,7 +156,7 @@ Key behaviours:
   without the epic steps (epic line, card, closing comment);
 - ticket agents follow `deliver-ticket` in agent mode (or the project's own
   delivery skill);
-- pre-flight: size gate, model labels, waves from blockers and file overlap,
+- pre-flight: size gate, model and effort labels (agents launched with both), waves from blockers and file overlap,
   human-only tickets parked;
 - at most N background agents (`CLAUDE.md`, default 3), refilled at once;
 - one agent at a time on each exclusive resource;

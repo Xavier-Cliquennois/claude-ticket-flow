@@ -59,12 +59,18 @@ only a human check left (a visual, a measurement on a device) → open in
 rest moved to a follow-up ticket. An open ticket with a merged PR therefore
 always means « only a check is left ».
 
-### A model label on every ticket
+### A model and an effort label on every ticket
 
-`model:opus` when the agent has to choose between options the ticket does not
-settle (architecture, product, an intermittent bug, a large scope).
 `model:sonnet` when the ticket says what to do and how to verify it.
-`run-epic` launches each agent on the model its ticket names.
+`model:opus` when the agent has to choose between options the ticket does not
+settle (architecture, product, an investigation, a large scope).
+`model:fable` (Claude Fable 5.2, the most capable and the most expensive)
+when that choice is costly to get wrong and hard to check: security design,
+a concurrency bug, a data migration, the foundation of an epic.
+
+`effort:normal` for most tickets, `effort:high` when correctness matters
+more than time; there is no other level. `run-epic` launches each agent on
+the model and the effort its ticket names.
 
 ### Waves, and a cap on parallel agents
 

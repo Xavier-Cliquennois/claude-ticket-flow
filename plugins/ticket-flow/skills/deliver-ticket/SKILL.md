@@ -119,7 +119,7 @@ call goes through.
 
 ## 1. Gate
 
-- The ticket has a « Fini quand » list, a model label and passes the size gate
+- The ticket has a « Fini quand » list, a model label, an effort label and passes the size gate
   of `write-ticket` §2. If it is too big, do not start: propose the split
   (`write-ticket`) and wait. In agent mode, report « NON LIVRÉ » with the
   proposed split.
