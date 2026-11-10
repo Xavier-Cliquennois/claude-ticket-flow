@@ -47,7 +47,7 @@ It works in this order and asks before changing anything:
    Linear? how the board's columns map to the five workflow states? merge flow?
    maximum parallel agents?
 3. **Creates what you approved**: labels (`model:fable`, `model:opus`, `model:sonnet`,
-   `effort:normal`, `effort:high`, `epic`,
+   `effort:medium`, `effort:high`, `epic`,
    `taille:S`, `taille:M`, `sécurité`; see [labels](../reference/tickets-and-labels.md#labels)), a board, a repository.
 4. **Writes the `## Workflow` section** of `CLAUDE.md`, or updates it if it
    exists, without rewriting the rest of the file, and shows you the diff.

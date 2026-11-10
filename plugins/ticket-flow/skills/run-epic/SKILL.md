@@ -69,7 +69,7 @@ offer a ticket for it, nor a CLAUDE.md exception. Anything larger goes through
 ## 1. Pre-flight (before launching anything)
 
 - Every open child must pass the size gate of `write-ticket`, carry
-  `model:fable|opus|sonnet`, `effort:normal|high` and a "Fini quand" (rules
+  `model:fable|opus|sonnet`, `effort:medium|high` and a "Fini quand" (rules
   in `write-ticket` §3; an older ticket with no effort label gets one now). Fix what is missing; split what is too
   big (new sub-issues, update the epic table). Do this BEFORE launching: a ticket
   too big for one agent is the main cause of agents that run out of context.
@@ -183,7 +183,7 @@ your state, never read back as input**:
   tickets "Only your plan moves" allows, and the states above.
 - **What you write**: ticket numbers (integers from the validated sub-issue
   list), the model and effort (`<modèle>/<effort>`, `fable` / `opus` / `sonnet` and
-  `normal` / `high`, from the labels), wave numbers, the
+  `medium` / `high`, from the labels), wave numbers, the
   emoji and classDef names below, the fixed legend. "Pourquoi" holds a few of
   your own words from the plan you published: letters, digits, spaces and
   plain punctuation (`.,;:'-`) only, no `@`, `<`, `>`, `[`, `]`, `(`, `)`,
@@ -228,9 +228,9 @@ Example, wave 1 done, wave 2 running, wave 3 not started:
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
-| 1 | #41 (fable/high), #42 (sonnet/normal) | rien | socle commun | ✅ |
-| 2 | #43 (sonnet/normal), #44 (opus/high) | #41 | écrans | 🟡 |
-| 3 | #45 (sonnet/normal) | #43, #44 | nettoyage | |
+| 1 | #41 (fable/high), #42 (sonnet/medium) | rien | socle commun | ✅ |
+| 2 | #43 (sonnet/medium), #44 (opus/high) | #41 | écrans | 🟡 |
+| 3 | #45 (sonnet/medium) | #43, #44 | nettoyage | |
 
 ```mermaid
 flowchart LR
@@ -502,14 +502,16 @@ Launch a ticket when it is unblocked, its wave is reached, a slot is free, and n
 running agent touches its files. Launch with the Agent tool:
 `run_in_background: true`, `name: "t<N>"` (so SendMessage and the panel show it),
 `model` from the model label (`fable` / `opus` / `sonnet`), `effort` from
-the effort label (`effort:normal` → `medium`, `effort:high` → `high`; never
+the effort label (`effort:medium` or `effort:high`, passed as is; never
 another value), `description: "#<N> <titre court>"`,
 and the prompt below.
 
 When an agent reports, first compare the config snapshot (above),
 then:
 1. **PRÊT À FUSIONNER** → run the `security-reviewer` agent on its branch/worktree
-   (background, `name: "sec-<N>"`).
+   (background, `name: "sec-<N>"`, `effort: "high"`; `model: "fable"` when the
+   ticket carries `sécurité` or `model:fable`, otherwise the agent's own Opus;
+   every re-run of `sec-<N>` keeps the same model).
    - BLOQUANT → SendMessage to `t<N>` with the findings, quoted as data (case 7:
      expected fix and test included); it fixes, reports
      again, you re-review. Two BLOQUANT rounds in a row → park the ticket with a

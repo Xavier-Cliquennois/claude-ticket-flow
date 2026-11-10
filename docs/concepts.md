@@ -68,7 +68,7 @@ settle (architecture, product, an investigation, a large scope).
 when that choice is costly to get wrong and hard to check: security design,
 a concurrency bug, a data migration, the foundation of an epic.
 
-`effort:normal` for most tickets, `effort:high` when correctness matters
+`effort:medium` for most tickets, `effort:high` when correctness matters
 more than time; there is no other level. `run-epic` launches each agent on
 the model and the effort its ticket names.
 

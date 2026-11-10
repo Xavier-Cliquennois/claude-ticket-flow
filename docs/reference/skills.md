@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.9.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.10.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -73,7 +73,7 @@ this", tickets revealed during a delivery.
 3. **Model and effort labels**: `model:sonnet` if the ticket settles what to
    do, `model:opus` if the agent must choose between options it does not
    settle, `model:fable` if that choice is costly and hard to check; then
-   `effort:normal` or `effort:high` (correctness over time)
+   `effort:medium` or `effort:high` (correctness over time)
    ([details](tickets-and-labels.md#labels)).
 4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
    or follow-up « suite de #N » for what a merged ticket left undone: its
@@ -397,7 +397,9 @@ the repository.
 
 ## security-reviewer (agent)
 
-Read-only (`Read`, `Grep`, `Glob`, `Bash`), runs on Opus. Given a branch, a
+Read-only (`Read`, `Grep`, `Glob`, `Bash`), runs on Opus at effort `high`;
+`run-epic` moves it to Fable for a ticket labelled `sécurité` or
+`model:fable`, where a missed flaw costs the most. Given a branch, a
 worktree or a PR (default: the working tree's diff), it reviews the changed
 code and the code needed to judge it, against the project's `CLAUDE.md` rules
 and a ten-point checklist: authentication, authorization/ownership, input

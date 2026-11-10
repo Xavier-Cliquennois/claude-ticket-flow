@@ -17,7 +17,7 @@ the default one below; the size gate and the labels apply everywhere.
   on the same subject (`q=$(mktemp)`, the words written in it under the heredoc rule of `deliver-ticket`, « REST first », then `gh api -X GET search/issues -F q=@"$q"` with `repo:$repo` in the file; never the words inside double quotes). Don't open
   a duplicate: comment on the existing one instead.
 - Name the files likely touched. A ticket whose files you cannot name is not
-  understood yet: explore more, or make it a short `model:opus` / `effort:normal`
+  understood yet: explore more, or make it a short `model:opus` / `effort:medium`
   investigation ticket whose deliverable is the real tickets.
 
 ## 2. The size gate (the most important step)
@@ -73,7 +73,7 @@ Effort, only two levels (no other value exists):
   migration, concurrency, a public API or contract, a ticket on the epic's
   critical path, a bug already missed once. A `model:fable` ticket is
   `effort:high` unless it is a short decision ticket.
-- `effort:normal`: everything else, most tickets.
+- `effort:medium`: everything else, most tickets.
 
 Raise the effort before the model: an `opus` / `effort:high` ticket is often
 enough where `fable` is tempting.
@@ -128,7 +128,7 @@ Créé par : @<login>, le <date>.
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
-| 1 | #a (opus/high), #b (sonnet/normal) | rien | pourquoi ensemble | |
+| 1 | #a (opus/high), #b (sonnet/medium) | rien | pourquoi ensemble | |
 | 2 | #c (fable/high) | #a | <raison> | |
 
 Chemin critique : #a → #c.

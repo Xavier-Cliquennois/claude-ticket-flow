@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.9.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.10.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
 line under the heading is a template marker, `<!-- ticket-flow workflow: 5 -->`:
@@ -52,7 +52,7 @@ language. Fields that do not apply are left out, never left as placeholders.
   `move-card` uses GraphQL. On a rate-limit error: read `gh api rate_limit`,
   wait for the reset, do not loop.
 - Tickets are written with the `write-ticket` skill.
-- Mandatory labels: a type, `model:fable|opus|sonnet`, `effort:normal|high`
+- Mandatory labels: a type, `model:fable|opus|sonnet`, `effort:medium|high`
   (nothing else), `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are
   "blocked by" links, not prose.
@@ -98,7 +98,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Tracking: Linear, team `ABC`, project "Mobile".
 - Labels: a type (`Bug`, `Feature`, `Improvement`), a model (group
   `Modèle IA`: `Fable` / `Opus` / `Sonnet`), an effort (group `Effort`:
-  `Normal` / `High`), a size (group `Taille`: `S` / `M`).
+  `Medium` / `High`), a size (group `Taille`: `S` / `M`).
 - An epic is a parent issue (children carry `parentId`) or a Linear project.
 - Statuses: Todo → In Progress → Testing → Done; Blocked when stuck.
 ```
