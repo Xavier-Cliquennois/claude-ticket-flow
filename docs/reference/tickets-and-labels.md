@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 ## The size gate
 
@@ -23,7 +23,7 @@ Any signal in the last column means split. There is no size L.
 
 ### How tickets are split, in order of preference
 
-1. **Decide first**: undecided questions become a short `model:opus` ticket
+1. **Decide first**: undecided questions become a short `model:opus` / `effort:medium` ticket
    whose "done when" is the decision written into the epic.
 2. **Investigate first**: "find out why" becomes its own ticket ending with a
    measurement or a diagnosis, not a fix.
@@ -43,8 +43,12 @@ labels are never renamed or recolored.
 
 | Label | Meaning |
 |---|---|
-| `model:opus` | Ambiguous architecture or product decision, intermittent bug, large scope the agent must decide itself, security-sensitive design |
+| `model:fable` | A choice the ticket does not settle where a mistake would be costly and hard to see: security-sensitive design, intermittent or concurrency bug, real-data migration, foundation of an epic, a ticket an opus agent already failed. Claude Fable 5.2, about twice Opus's price |
+| `model:opus` | Ambiguous architecture or product decision, investigation, a scope the agent must decide itself |
 | `model:sonnet` | The ticket says what to do and how to verify it |
+| `effort:medium` | The agent runs at effort `medium`: most tickets |
+| `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`); the usual effort for `model:fable` |
+| `challenger` | Before the merge, the `challenger` agent re-proves the "done when" boxes instead of trusting the delivery report. On any of: `model:opus` or `model:fable`, `effort:high`, `taille:M`, `sécurité`, a box proved by a judgment (diagnosis, bug fixed with no reproducing test, performance). Not on a `taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all commands |
 | `epic` | Parent of a wave of sub-issues (optional in Linear) |
 | `taille:S` | Under half a human day, 1-3 files |
 | `taille:M` | One human day at most, one responsibility |
@@ -52,7 +56,86 @@ labels are never renamed or recolored.
 
 Plus a type label (`bug`, `feature`, …; GitHub's defaults are reused) and any
 project-specific taxonomy you already have, which is kept and documented.
-In Linear, the same labels live in a "Modèle IA" group and a "Taille" group.
+Every ticket has exactly one model label and one effort label. In Linear,
+the same labels live in a "Modèle IA" group (Fable / Opus / Sonnet), an
+"Effort" group (Medium / High) and a "Taille" group. The next section says
+how to choose them.
+
+## Choosing the model, the effort and the challenger
+
+`write-ticket` sets these labels when it writes the ticket; `run-epic`
+checks them in its pre-flight and adds what is missing. Each agent then runs
+exactly on what its ticket says.
+
+### Model: two questions, in order
+
+```mermaid
+flowchart TD
+  Q1{"Does the agent have to choose between<br/>options the ticket does not settle?"}
+  Q1 -->|no| S["model:sonnet"]
+  Q1 -->|yes| Q2{"Would a wrong choice be costly<br/>and hard to see in the done-when checks?"}
+  Q2 -->|no| O["model:opus"]
+  Q2 -->|yes| F["model:fable"]
+```
+
+| Model | For | Examples |
+|---|---|---|
+| `model:sonnet` (Claude Sonnet 5.5) | The ticket says what to do and how to verify it | A well-located fix, a rename across an area, a11y/i18n/style fixes checked in the DOM |
+| `model:opus` (Claude Opus 5.5) | The agent decides something the ticket leaves open | An architecture or product choice, an investigation, a scope to settle |
+| `model:fable` (Claude Fable 5.2) | Same, and a mistake would be expensive and hard to catch | Security-sensitive design, an intermittent or concurrency bug, a migration of real data, the foundation other tickets of the epic build on, a ticket an opus agent already failed |
+
+Fable is the most capable model and costs about twice Opus: it is kept for
+the last row.
+
+### Effort: two levels only
+
+| Effort | The agent runs at | For |
+|---|---|---|
+| `effort:medium` | effort `medium` | Most tickets |
+| `effort:high` | effort `high` | Correctness matters more than time: `sécurité` label, data migration, concurrency, a public API or contract, a ticket on the epic's critical path, a bug already missed once. The usual effort of a `model:fable` ticket (except a short decision ticket) |
+
+The label is the exact effort passed to the agent, whatever the model: no
+other level is ever used. Raise the effort before the model: `opus` at
+`effort:high` is often enough where `fable` is tempting.
+
+### Challenger: only when the report is not enough
+
+A delivery agent proves its own "done when" boxes. With the `challenger`
+label, the `challenger` agent checks them again before the merge, without
+trusting the report: it re-proves each box, re-runs the `CLAUDE.md` checks,
+and verifies each test would fail without the change.
+
+Add `challenger` when any of these holds:
+- `model:opus` or `model:fable`: the agent made choices the ticket did not
+  settle;
+- `effort:high`, `taille:M` or `sécurité`;
+- a box is proved by a judgment rather than a command result: a diagnosis, a
+  bug "fixed" with no test that reproduces it, a performance claim.
+
+Leave it off a small framed ticket: `taille:S`, `model:sonnet`,
+`effort:medium`, every box proved by a command anyone can rerun. A box that
+needs a human eye does not call for it: the challenger cannot tick it either.
+`run-epic` adds the label when the rule calls for it and never removes one a
+person set.
+
+### Who runs on what
+
+| Agent | Model | Effort | When |
+|---|---|---|---|
+| Delivery agent `t<N>` | the ticket's model label | the ticket's effort label | every ticket |
+| `security-reviewer` (`sec-<N>`) | Opus; Fable on a `sécurité` or `model:fable` ticket | `high` | before every merge |
+| `challenger` (`chal-<N>`) | Sonnet on a `model:sonnet` ticket, Opus on `model:opus` and `model:fable` | `high` | before the merge of a `challenger` ticket, in parallel with `security-reviewer`, on the same commit |
+
+The challenger is never on Fable: it checks the work against the ticket's
+criteria, it does not redo the ticket's decisions. Its verdict:
+- **BLOCKING** (a box claimed but not proved, a red check, a test that does
+  not test, a change the ticket rules out): the merge waits; the agent fixes,
+  then both reviews run again on the new commit. Two BLOCKING rounds in a
+  row, from either review, park the ticket.
+- **OK WITH RESERVATIONS** (a forgotten doc or test, harmless scope creep):
+  no block; the reservations go in the ticket's merge comment and the closing
+  summary, and you decide whether they become tickets.
+- A box the challenger could not prove is never ticked.
 
 ## Templates
 

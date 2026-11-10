@@ -101,8 +101,12 @@ skill owns; never recolor or rename the user's existing labels). Standard set:
 
 | Label | Color | Description |
 |---|---|---|
-| `model:opus` | `7B61FF` | Décision d'architecture/produit ambiguë, bug intermittent, gros périmètre à trancher soi-même |
+| `model:fable` | `B8336A` | Choix à trancher où une erreur coûterait cher et se verrait mal : conception sécurité, bug de concurrence, migration de données, socle d'épic |
+| `model:opus` | `7B61FF` | Décision d'architecture/produit ambiguë, investigation, périmètre à trancher soi-même |
 | `model:sonnet` | `0E8A16` | Travail cadré : le ticket dit quoi faire et comment le vérifier |
+| `effort:medium` | `D4C5F9` | L'agent tourne en effort `medium` : la plupart des tickets |
+| `effort:high` | `5319E7` | L'agent tourne en effort `high` : la justesse compte plus que le temps : sécurité, données, concurrence, contrat public, chemin critique |
+| `challenger` | `FBCA04` | L'agent `challenger` revérifie le « Fini quand » avant la fusion (pas pour un petit ticket cadré) |
 | `epic` | `3E4B9E` | Parent d'une vague de sous-tickets |
 | `taille:S` | `C2E0C6` | Moins d'une demi-journée humaine, 1 à 3 fichiers |
 | `taille:M` | `FEF2C0` | Une journée humaine au plus, une seule responsabilité |
@@ -113,8 +117,8 @@ reuse GitHub's defaults when present. Keep project-specific taxonomies that
 already exist (e.g. `gain`/`validation` or `phase:N` labels) and document
 them; don't replace them.
 
-For Linear, create the equivalent labels in a "Modèle IA" group and a "Taille"
-group through the Linear MCP, only after a yes.
+For Linear, create the equivalent labels in a "Modèle IA" group (Fable, Opus,
+Sonnet), an "Effort" group (Medium, High) and a "Taille" group through the Linear MCP, only after a yes.
 
 For a GitHub Project board, install the card mover, after the same yes: copy
 `${CLAUDE_PLUGIN_ROOT}/scripts/move-card` to `.claude/scripts/move-card` in the
@@ -153,7 +157,7 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 4 -->
+<!-- ticket-flow workflow: 5 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -163,14 +167,14 @@ section is older. Upgrading a section brings it to that number.
 - Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau) ; jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
 - Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé ; seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
-- Labels obligatoires : un type, `model:opus|sonnet`, `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
+- Labels obligatoires : un type, `model:fable|opus|sonnet`, `effort:medium|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.
 
 ### Livrer un ticket
 - Worktree : `git worktree add ../<repo>-<N> -b <branche>` ; branche `<convention>`.
 - Vérifier : `<commandes réelles, dans l'ordre>`.
 - Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord ; Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois ; sinon écrire « test navigateur NON FAIT » et pourquoi.
-- Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion ; un constat HIGH/MEDIUM bloque la fusion ; un constat hors périmètre devient un ticket `sécurité`.
+- Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion ; un constat HIGH/MEDIUM bloque la fusion ; un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
 - Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut) ; ne reste qu'une vérification à la main → « à valider » ; reste du code → ticket de suite, jamais un ticket laissé ouvert ; ouvrir les tickets révélés.
 
@@ -196,4 +200,4 @@ user's yes like everything else.
 
 List what was created, what changed in CLAUDE.md, and what is left to
 the user (commit, push, a decision they deferred). If `write-ticket`, `run-epic` or
-the `security-reviewer` agent are missing, say so (they ship together in the `ticket-flow` plugin).
+the `security-reviewer` or `challenger` agents are missing, say so (they ship together in the `ticket-flow` plugin).

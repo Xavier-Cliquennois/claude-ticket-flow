@@ -3,10 +3,10 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-10-15 (ticket-flow 0.7.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
-line under the heading is a template marker, `<!-- ticket-flow workflow: 4 -->`:
+line under the heading is a template marker, `<!-- ticket-flow workflow: 5 -->`:
 the update band offers to run `setup-project` when a project's marker is
 missing or lower than the plugin's (see
 [skills.md](skills.md#update-band)). The number only moves when the template
@@ -52,7 +52,8 @@ language. Fields that do not apply are left out, never left as placeholders.
   `move-card` uses GraphQL. On a rate-limit error: read `gh api rate_limit`,
   wait for the reset, do not loop.
 - Tickets are written with the `write-ticket` skill.
-- Mandatory labels: a type, `model:opus|sonnet`, `taille:S|M` (no L: split).
+- Mandatory labels: a type, `model:fable|opus|sonnet`, `effort:medium|high`
+  (nothing else), `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are
   "blocked by" links, not prose.
 
@@ -62,7 +63,9 @@ language. Fields that do not apply are left out, never left as placeholders.
 - Browser (UI): Chrome first; Playwright if Chrome is closed or fails 2-3
   times; otherwise write "browser test NOT DONE" and why.
 - Review: `security-reviewer` on the diff before any merge; HIGH/MEDIUM block;
-  out-of-scope findings become `sécurité` tickets.
+  out-of-scope findings become `sécurité` tickets. A `challenger` ticket also
+  goes through the `challenger` agent (in parallel, same commit); its
+  BLOCKING blocks the merge.
 - Merge: PR to `main`, merge commit, after green CI.
 - Closing: tick "done when" boxes as you go, comment what was checked, close
   it yourself when every box is ticked (`Closes #N` does nothing when the merge
@@ -96,7 +99,8 @@ language. Fields that do not apply are left out, never left as placeholders.
 ### Tickets
 - Tracking: Linear, team `ABC`, project "Mobile".
 - Labels: a type (`Bug`, `Feature`, `Improvement`), a model (group
-  `Modèle IA`: `Opus` / `Sonnet`), a size (group `Taille`: `S` / `M`).
+  `Modèle IA`: `Fable` / `Opus` / `Sonnet`), an effort (group `Effort`:
+  `Medium` / `High`), a size (group `Taille`: `S` / `M`).
 - An epic is a parent issue (children carry `parentId`) or a Linear project.
 - Statuses: Todo → In Progress → Testing → Done; Blocked when stuck.
 ```

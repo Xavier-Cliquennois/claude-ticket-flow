@@ -3,6 +3,7 @@ name: security-reviewer
 description: Read-only security review of a diff (a branch, a worktree, a PR) before it is merged. Returns a verdict BLOQUANT / OK AVEC RÉSERVES / OK and verified findings with severity, file:line and a concrete exploit scenario. Use before every merge in run-epic, after any change touching auth, user data, input parsing, uploads, secrets, payments, SQL, shell or HTML rendering, and whenever the user asks for a security review.
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: high
 color: red
 ---
 

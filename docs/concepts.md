@@ -2,7 +2,7 @@
 
 What the ticket-flow method is, and why each of its rules exists.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 ## The idea in one paragraph
 
@@ -10,7 +10,8 @@ Work is written down as tickets before it is done. Each ticket is small enough
 for one Claude Code agent to deliver in one session, and says how anyone can
 check it is done. Related tickets form an epic. One orchestrator session runs
 an epic by handing each ticket to a background agent, a few at a time, and
-merges their work one by one after a security review. Documentation moves with
+merges their work one by one after a security review (and a challenger
+that re-checks the work, on the tickets that need one). Documentation moves with
 the code. The project's `CLAUDE.md` holds the few settings that differ from one
 project to another; everything else is the same everywhere.
 
@@ -59,12 +60,19 @@ only a human check left (a visual, a measurement on a device) → open in
 rest moved to a follow-up ticket. An open ticket with a merged PR therefore
 always means « only a check is left ».
 
-### A model label on every ticket
+### A model and an effort label on every ticket
 
-`model:opus` when the agent has to choose between options the ticket does not
-settle (architecture, product, an intermittent bug, a large scope).
 `model:sonnet` when the ticket says what to do and how to verify it.
-`run-epic` launches each agent on the model its ticket names.
+`model:opus` when the agent has to choose between options the ticket does not
+settle (architecture, product, an investigation, a large scope).
+`model:fable` (Claude Fable 5.2, the most capable and the most expensive)
+when that choice is costly to get wrong and hard to check: security design,
+a concurrency bug, a data migration, the foundation of an epic.
+
+`effort:medium` for most tickets, `effort:high` when correctness matters
+more than time; there is no other level. `run-epic` launches each agent on
+the model and the effort its ticket names. How to choose:
+[tickets-and-labels.md](reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger).
 
 ### Waves, and a cap on parallel agents
 
@@ -94,6 +102,18 @@ Agents stop before their final merge and report READY TO MERGE. The
 orchestrator runs the read-only `security-reviewer` agent on the branch.
 HIGH or MEDIUM findings in scope block the merge and go back to the agent;
 findings outside the ticket's scope become `sécurité` tickets and do not block.
+
+### A challenger on the tickets that need one
+
+A delivery agent proves its own « done when » boxes. On a ticket labelled
+`challenger`, the orchestrator does not take its word: the read-only
+`challenger` agent, run next to the security review on the same commit,
+re-proves each box, re-runs the project's checks and verifies the tests
+would fail without the change. The label goes on any ticket that is not
+small and framed: `model:opus` or `model:fable`, `effort:high`, `taille:M`,
+`sécurité`, or a box proved by a judgment rather than a command. A
+`taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all
+commands goes without it.
 
 ### One merge at a time
 

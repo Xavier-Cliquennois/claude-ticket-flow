@@ -2,7 +2,7 @@
 
 What happens, step by step, when `run-epic` runs an epic, and what you see.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.2.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 ## Start it
 
@@ -26,13 +26,13 @@ sequenceDiagram
   participant U as You
   participant O as Orchestrator
   participant A as Ticket agent tN
-  participant R as security-reviewer
+  participant R as security-reviewer (+ challenger)
   O->>O: read CLAUDE.md, epic, children, worktrees, free memory
   O->>O: size gate, waves, park human-only tickets
   O->>U: plan (waves, N, merge order)
   U-->>O: go (unless autonomous)
   loop while tickets remain
-    O->>A: launch in background (model from label)
+    O->>A: launch in background (model and effort from labels)
     A-->>O: READY TO MERGE (25-line report)
     O->>R: review the branch
     alt BLOCKING
@@ -58,8 +58,9 @@ resume, never to recreate) and the machine's free memory.
 
 ### 1. Pre-flight
 
-- Every open child must pass the size gate, carry a model label and a "done
-  when" list. Missing pieces are fixed, oversized tickets are split, before
+- Every open child must pass the size gate, carry a model label, an effort label
+  and a "done when" list; the `challenger` label is added where its rule
+  calls for it ([rules](../reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)). Missing pieces are fixed, oversized tickets are split, before
   anything is launched.
 - Waves are built from blocked-by links, then from file overlap.
 - Tickets that need a human eye (annotation, visual judgment, a product
@@ -70,7 +71,7 @@ resume, never to recreate) and the machine's free memory.
 
 A ticket is launched when it is unblocked, its wave is reached, a slot is free
 and no running agent touches its files. Each agent runs in the background,
-named `t<N>`, on the model its label names, follows `deliver-ticket` in agent
+named `t<N>`, on the model and the effort its labels name, follows `deliver-ticket` in agent
 mode (or the project's own delivery skill), with a fixed prompt: read first,
 scope, files owned by sibling agents, worktree, dedicated ports or locks,
 verify commands, long commands kept visible, browser protocol, docs rule,
@@ -79,7 +80,7 @@ final merge, and the report format.
 
 | Agent reports | Orchestrator does |
 |---|---|
-| READY TO MERGE | runs `security-reviewer`; BLOCKING → sends the findings back; OK → "merge", once the previous merge is done |
+| READY TO MERGE | runs `security-reviewer`, and `challenger` in parallel on a ticket labelled `challenger`; BLOCKING from either → sends the findings back; OK → "merge", once the previous merge is done |
 | MERGED | checks the ticket's real state: closed → ✅; to validate → 🧪; code left → follow-up ticket, original closed; comments the epic, refills the slot |
 | BLOCKED / NOT DELIVERED | comments the reason, parks the ticket, refills the slot; relaunches once at most |
 | revealed tickets | creates them with `write-ticket` (sub-issue if the epic needs them) |
@@ -120,7 +121,8 @@ new row). Only a manual check keeps a merged ticket open (🧪).
 An epic written before this section existed gets it added in pre-flight.
 
 At the end of "Vagues", an "Effort" table answers « how long and how much
-did each part take »: per merged ticket, the agents' summed time, tool calls,
+did each part take » (what was spent, not the `effort:` label the agent ran
+at): per merged ticket, the agents' summed time, tool calls,
 tokens and lines added/removed, then the total and one total per domain.
 Declare domains in the epic with an optional `## Domaines` section
 (`- socle : #41, #42`), names in unaccented letters, digits, spaces and `-` (not a ticket id, not a

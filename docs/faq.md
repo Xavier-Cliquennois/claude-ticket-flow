@@ -3,7 +3,7 @@
 Common questions about ticket-flow, and what to do when something does not
 work.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 **Do I have to run `setup-project` in every project?**
 Once per project, and again when its way of working changes. Without it the
@@ -11,8 +11,8 @@ skills still work on defaults (GitHub issues, 3 agents, standard template) but
 guess more and ask more.
 
 **Can I keep my own ticket template or labels?**
-Yes. If `CLAUDE.md` describes a template, `write-ticket` uses it; the size gate
-and model labels still apply. Existing label taxonomies are kept.
+Yes. If `CLAUDE.md` describes a template, `write-ticket` uses it; the size gate,
+the model and effort labels and the challenger rule still apply. Existing label taxonomies are kept.
 
 **Why can't a subagent compact itself at 35 %?**
 Claude Code does not expose that: a subagent cannot run `/compact`, and a mod
@@ -35,6 +35,23 @@ The `gh` token lacks the `project` scope: `gh auth refresh -s project`.
 **The machine is slow or tests fail randomly during an epic.**
 Lower the max parallel agents in `CLAUDE.md`, name heavy commands as exclusive
 resources, and limit test workers in the verify commands.
+
+**Which model and effort should a ticket get?**
+Two questions: does the agent have to choose something the ticket does not
+settle (no → `model:sonnet`), and would a wrong choice be costly and hard to
+see (no → `model:opus`, yes → `model:fable`). Then `effort:high` when
+correctness matters more than time, else `effort:medium`. Details and
+examples: [choosing the model, the effort and the
+challenger](reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger).
+
+**Why did the challenger not run on my ticket?**
+It runs only on tickets labelled `challenger`. A small framed ticket
+(`taille:S`, `model:sonnet`, `effort:medium`, every box a command) goes
+without it. Add the label by hand if you want the second check anyway.
+
+**The challenger blocks the same ticket twice.**
+`run-epic` parks it, as for the security review. Read its findings: a box
+that cannot be proved by a command may need rewriting, or a human check.
 
 **The security review blocks the same ticket twice.**
 `run-epic` parks it and tells you. Read the findings in the ticket comment;
