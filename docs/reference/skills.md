@@ -74,7 +74,7 @@ this", tickets revealed during a delivery.
    do, `model:opus` if the agent must choose between options it does not
    settle, `model:fable` if that choice is costly and hard to check; then
    `effort:medium` or `effort:high` (correctness over time)
-   ([details](tickets-and-labels.md#labels)).
+   ([details](tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)).
 4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
    or follow-up « suite de #N » for what a merged ticket left undone: its
    boxes are the original's unticked boxes copied word for word, the delivery
@@ -418,7 +418,7 @@ RESERVATIONS, OK. Out-of-scope findings become tickets.
 
 Read-only (`Read`, `Grep`, `Glob`, `Bash`), effort `high`, run before the
 merge of a ticket labelled `challenger` (rule in
-[tickets-and-labels.md](tickets-and-labels.md#labels)), next to
+[tickets-and-labels.md](tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)), next to
 `security-reviewer` on the same head. Model: Sonnet for a `model:sonnet`
 ticket, Opus for `model:opus` and `model:fable`: it checks the work against
 the ticket's criteria, it does not redo the ticket's decisions.

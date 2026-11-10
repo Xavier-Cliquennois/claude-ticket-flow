@@ -2,7 +2,7 @@
 
 What the ticket-flow method is, and why each of its rules exists.
 
-> Up to date as of 2026-10-09 (ticket-flow 0.1.0).
+> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
 
 ## The idea in one paragraph
 
@@ -10,7 +10,8 @@ Work is written down as tickets before it is done. Each ticket is small enough
 for one Claude Code agent to deliver in one session, and says how anyone can
 check it is done. Related tickets form an epic. One orchestrator session runs
 an epic by handing each ticket to a background agent, a few at a time, and
-merges their work one by one after a security review. Documentation moves with
+merges their work one by one after a security review (and a challenger
+that re-checks the work, on the tickets that need one). Documentation moves with
 the code. The project's `CLAUDE.md` holds the few settings that differ from one
 project to another; everything else is the same everywhere.
 
@@ -70,7 +71,8 @@ a concurrency bug, a data migration, the foundation of an epic.
 
 `effort:medium` for most tickets, `effort:high` when correctness matters
 more than time; there is no other level. `run-epic` launches each agent on
-the model and the effort its ticket names.
+the model and the effort its ticket names. How to choose:
+[tickets-and-labels.md](reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger).
 
 ### Waves, and a cap on parallel agents
 
