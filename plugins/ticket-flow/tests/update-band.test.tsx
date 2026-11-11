@@ -48,7 +48,8 @@ for (const surface of SURFACES) {
     engine(on, '0.4.0', '# P\n\n## Workflow\n\n### Tickets\n')
     await (await $.ui.mount({ ...BAND, surface })).unmount()
     const ui = await $.ui.mount({ ...BAND, surface })
-    expect(await ui.find({ type: 'Button', label: 'Remettre à niveau' })).toBeDefined()
+    expect(await ui.find({ type: 'Button', label: /setup-project/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Setup à refaire/ })).toBeDefined()
     await ui.unmount()
   })
 
@@ -56,7 +57,8 @@ for (const surface of SURFACES) {
     engine(on, '0.4.0', '# P\n\n## Workflow\n<!-- ticket-flow workflow: 4 -->\n')
     await (await $.ui.mount({ ...BAND, surface })).unmount()
     const ui = await $.ui.mount({ ...BAND, surface })
-    expect(await ui.find({ type: 'Button', label: 'Remettre à niveau' })).toBeDefined()
+    expect(await ui.find({ type: 'Button', label: /setup-project/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /Setup à refaire/ })).toBeDefined()
     await ui.unmount()
   })
 
@@ -64,7 +66,7 @@ for (const surface of SURFACES) {
     engine(on, '0.4.0', '# P\n\n## Workflow\n<!-- ticket-flow workflow: 5 -->\n')
     await (await $.ui.mount({ ...BAND, surface })).unmount()
     const ui = await $.ui.mount({ ...BAND, surface })
-    expect(await ui.find({ type: 'Button', label: 'Remettre à niveau' })).toBeUndefined()
+    expect(await ui.find({ type: 'Button', label: /setup-project/ })).toBeUndefined()
     await ui.unmount()
   })
 }

@@ -49,6 +49,7 @@ let bandDrawn = false
 let checked = false
 let active: boolean | undefined
 let contextSent = false
+let workflowContextSent = false
 
 /** True when dotted version `a` is lower than `b`. */
 export function isOlder(a: string, b: string): boolean {
@@ -226,12 +227,23 @@ export function registerUpdateBand(on: On, options: UpdateBandConfig): void {
 
   // Surfaces without the band (VS Code, mobile): tell the model once.
   on('prompt.submit', async ($, e, next) => {
-    if (bandDrawn || contextSent || !hasUpdate()) return next(e)
-    contextSent = true
-    const note =
-      `The ${$.plugin.name} plugin is outdated (installed ${installed}, latest ${latest}). ` +
-      `Tell the user once, in their language and plain words, how to update: ${manualSteps($.plugin.name)}.`
-    return next({ ...e, context: [...(e.context ?? []), note] })
+    if (bandDrawn) return next(e)
+    const notes: string[] = []
+    if (!contextSent && hasUpdate()) {
+      contextSent = true
+      notes.push(
+        `The ${$.plugin.name} plugin is outdated (installed ${installed}, latest ${latest}). ` +
+          `Tell the user once, in their language and plain words, how to update: ${manualSteps($.plugin.name)}.`,
+      )
+    }
+    if (!workflowContextSent && workflowStale && config.workflow) {
+      workflowContextSent = true
+      notes.push(
+        `The "## Workflow" section of this project's CLAUDE.md comes from an older ${$.plugin.name} template. ` +
+          `Tell the user once, in their language and plain words, to run /${config.workflow.command} to bring it up to date.`,
+      )
+    }
+    return notes.length ? next({ ...e, context: [...(e.context ?? []), ...notes] }) : next(e)
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -276,8 +288,10 @@ export function registerUpdateBand(on: On, options: UpdateBandConfig): void {
     if (workflowStale && config.workflow) {
       rows.push(
         <Box key="w" hover={{ backgroundColor: 'subtle' }}>
-          <Text>⚙ La section Workflow du CLAUDE.md date d'un ancien gabarit </Text>
-          <Button key="workflow" label="Remettre à niveau" onPress={() => runWorkflowCommand($)} />
+          <Text color="yellow" bold>
+            ⚠ Setup à refaire : le CLAUDE.md de ce projet date d'un ancien gabarit{' '}
+          </Text>
+          <Button key="workflow" label={`Lancer /${config.workflow.command}`} variant="primary" onPress={() => runWorkflowCommand($)} />
         </Box>,
       )
     }
