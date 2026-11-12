@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-11 (ticket-flow 0.12.0).
+> Up to date as of 2026-11-12 (ticket-flow 0.13.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -23,6 +23,17 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
 | 5. Finish | what was created, what changed, what is left to you | — |
+
+### mise and Doppler (optional)
+
+`setup-project` asks, separately, whether to use **mise** (pinned tool versions and
+a `mise run setup` bootstrap) and **Doppler** (secrets outside `.env` files). Each
+answer is independent and can be "not now". With Doppler, it can also move the
+deploy workflow to a single read-only `DOPPLER_TOKEN` GitHub secret: a loader step
+that masks each value, actions pinned to SHAs, a runtime env file kept out of the
+Docker build context. It never reads or prints a secret value and never deletes a
+`.env`. The chosen setup is written as an `### Environnement` block in the
+`## Workflow` section (marker number 6).
 
 ### Shared build cache
 

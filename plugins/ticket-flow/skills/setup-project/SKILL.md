@@ -43,6 +43,10 @@ Run these and keep the answers:
   reads it when it exists), and report any `SCCACHE_*` variable already set.
   If any of these already holds a wrapper, propose nothing and say so. Read
   only, change nothing.
+- Secrets and tooling: `mise.toml` / `.mise.toml` / `.tool-versions`, `doppler.yaml`,
+  `.env*` files (names only, never read their values), `.env.example`, `command -v
+  mise doppler`, `doppler me` (logged in?), `gh secret list` and `gh variable list`
+  (names only), and which `.github/workflows/*.yml` read `secrets.*` / `vars.*`.
 - Is there a web UI to test in a browser (Next.js, Vite, a `viz/` page...)?
 - Memory dir for this project (`~/.claude/projects/<slug>/memory/MEMORY.md`), if any:
   notes about workflow there are facts to carry into CLAUDE.md.
@@ -92,6 +96,18 @@ only what you could not infer:
   compilation is not cached by sccache) are still built per worktree, so the
   first build of a new worktree is faster but not instant. If declined, or
   if the tool is already set up, record it and move on.
+- Tooling and secrets, two independent yes/no questions, each with a "not now":
+  - **mise** (https://mise.jdx.dev): pin the tool versions and give the project one
+    bootstrap command. If declined or already in place, record it and move on.
+  - **Doppler** (https://doppler.com): secrets live in Doppler instead of `.env`
+    files and per-variable GitHub secrets. Ask the Doppler project and the config
+    names (convention: one project per group of repos, configs `dev_<repo>` for
+    local work and `prd_<repo>` for deploys). Without mise, Doppler still works
+    through `doppler run --` and `DOPPLER_PROJECT` / `DOPPLER_CONFIG` in the
+    command, so the two choices never depend on each other.
+  - If the project deploys from GitHub Actions, and Doppler is chosen, ask whether
+    to move the workflow to Doppler too (section 3b). If Doppler is declined, never
+    touch the workflows' secrets.
 - Domain labels specific to this project, if the user wants some.
 
 ## 3. Create what was approved
@@ -138,6 +154,55 @@ after its own yes, in this run, after showing the exact command or lines. It
 touches the user's machine, not the repository: never in silence, never
 repeated if already in place, and not written into CLAUDE.md as a rule.
 
+## 3b. mise and Doppler (only what was approved)
+
+Nothing here is done in silence: show the files you would write, then write them
+after the yes. Never read, print or copy the value of a secret into the chat, a
+file in the repository or a commit. `.env` files are never deleted by this skill:
+tell the user which ones are now redundant and let them decide.
+
+**mise** (approved): write `mise.toml` with `[tools]` from the real stack
+(versions read from `package.json` engines, `pyproject.toml`, `.nvmrc`,
+`packageManager`, never invented), plus `doppler = "latest"` when Doppler is
+chosen. Add a `setup` task (the install command the stack really uses) and the
+`dev` / `test` / `build` tasks the project already has as scripts. Document
+`mise trust && mise install && mise run setup` in the README or CLAUDE.md. Test it
+from a fresh clone in a temp folder when possible.
+
+**Doppler** (approved):
+- `[env]` in `mise.toml` sets `DOPPLER_PROJECT` and `DOPPLER_CONFIG` (without mise:
+  `doppler setup --project <p> --config <c> --no-interactive`, or `doppler.yaml`).
+  Tasks that need secrets run `doppler run -- <cmd>`.
+- A `doppler-check` task (`doppler me`, then `doppler secrets --only-names`) that
+  `setup` depends on, so a missing login is caught first.
+- The user creates the Doppler project and configs and loads the values (the CLI
+  `doppler secrets upload` from a JSON file, never through the chat). Verify a
+  migration by comparing hashes or key names, never by printing values.
+
+**Deploy workflow moved to Doppler** (approved): the only GitHub secret left is
+`DOPPLER_TOKEN`, a service token scoped read-only to one config. The user creates
+it and sets it themselves
+(`doppler configs tokens create ... --plain | gh secret set DOPPLER_TOKEN --repo <r>`),
+then deletes the old secrets and variables (list their names for them). In the
+workflow:
+- install the CLI with `dopplerhq/cli-action` pinned to a commit SHA, and pin every
+  other third-party action to a SHA too;
+- one loader step reads each key with `doppler secrets get <K> --plain`, masks it
+  (`::add-mask::`, line by line) and exports it to `$GITHUB_ENV` with a random
+  heredoc delimiter (`EOF_$(openssl rand -hex 16)`), refusing a value that
+  contains it. Use `${{ env.K }}` afterwards instead of `secrets.K` / `vars.K`;
+- values built at image build time (`NEXT_PUBLIC_*`) must be loaded before
+  `docker build`; a runtime env file is written outside the Docker build context
+  (under `$RUNNER_TEMP`, mode 0600) and copied only after the build, never into
+  the repository root;
+- the remote script uses `umask 077` and a `trap` that removes the upload folder;
+- a Docker `HEALTHCHECK` targets `127.0.0.1`, not `localhost` (which can resolve
+  to `::1` where the server does not listen);
+- check the workflow with a real run (`workflow_dispatch`) before telling the user
+  to delete the old secrets.
+
+If the project has no deploy workflow, skip the last block.
+
 ## 4. Write or upgrade CLAUDE.md
 
 If there is no CLAUDE.md: write one with a short project header (what it is, stack,
@@ -157,7 +222,7 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 5 -->
+<!-- ticket-flow workflow: 6 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -169,6 +234,12 @@ section is older. Upgrading a section brings it to that number.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
 - Labels obligatoires : un type, `model:fable|opus|sonnet`, `effort:medium|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.
+
+### Environnement
+<!-- Keep this block only for what was approved; delete the lines that do not apply. -->
+- Mise en route : `mise trust && mise install && mise run setup`.
+- Secrets : Doppler, projet `<p>`, config `<c>` (local), `<prd>` (déploiement). Aucun `.env` versionné, jamais de valeur de secret dans un commit, un log ou le chat. Lancer une commande avec ses secrets : `doppler run -- <cmd>` (ou `mise run dev`).
+- CI : le seul secret GitHub est `DOPPLER_TOKEN` (lecture seule, une config). Un nouveau secret s'ajoute dans Doppler, pas dans GitHub.
 
 ### Livrer un ticket
 - Worktree : `git worktree add ../<repo>-<N> -b <branche>` ; branche `<convention>`.

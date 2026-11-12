@@ -3,10 +3,10 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
+> Up to date as of 2026-11-12 (ticket-flow 0.13.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
-line under the heading is a template marker, `<!-- ticket-flow workflow: 5 -->`:
+line under the heading is a template marker, `<!-- ticket-flow workflow: 6 -->`:
 the update band offers to run `setup-project` when a project's marker is
 missing or lower than the plugin's (see
 [skills.md](skills.md#update-band)). The number only moves when the template
@@ -56,6 +56,15 @@ language. Fields that do not apply are left out, never left as placeholders.
   (nothing else), `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are
   "blocked by" links, not prose.
+
+### Environment
+- Setup: `mise trust && mise install && mise run setup`.
+- Secrets: Doppler, project `shop`, configs `dev_shop` (local) and `prd_shop`
+  (deploy). No `.env` is committed and no secret value goes into a commit, a log
+  or the chat. Run with secrets: `doppler run -- <cmd>` (or `mise run dev`).
+- CI: the only GitHub secret is `DOPPLER_TOKEN` (read-only, one config).
+
+This block exists only when the project chose mise and/or Doppler.
 
 ### Delivering a ticket
 - Worktree: `git worktree add ../shop-<N> -b feat/<N>-<slug>`.
