@@ -62,6 +62,14 @@ for (const surface of SURFACES) {
     await ui.unmount()
   })
 
+  test(`${surface}: a "## Workflow : ..." runbook heading is not the ticket-flow section`, async ($, on) => {
+    engine(on, '0.4.0', '# P\n\n## Workflow : deploy the compose\n\nscp file host:/path\n')
+    await (await $.ui.mount({ ...BAND, surface })).unmount()
+    const ui = await $.ui.mount({ ...BAND, surface })
+    expect(await ui.find({ type: 'Button', label: /setup-project/ })).toBeUndefined()
+    await ui.unmount()
+  })
+
   test(`${surface}: a Workflow section with the current marker says nothing`, async ($, on) => {
     engine(on, '0.4.0', '# P\n\n## Workflow\n<!-- ticket-flow workflow: 6 -->\n')
     await (await $.ui.mount({ ...BAND, surface })).unmount()

@@ -126,7 +126,7 @@ async function checkWorkflow($: EngineInterface): Promise<void> {
     workflowStale = false
     return
   }
-  if (!/^## Workflow\b/m.test(text)) {
+  if (!/^## Workflow[ \t]*$/m.test(text)) {
     workflowStale = false
     return
   }
