@@ -110,8 +110,8 @@ Le résultat attendu, en une ou deux phrases. Les décisions déjà prises.
 ## Fini quand
 - [ ] critère vérifiable par quelqu'un d'autre (commande, chiffre, recette)
 - [ ] vérifications du projet vertes (<commandes du CLAUDE.md>)
-- [ ] recette navigateur faite (Chrome, ou Playwright en secours) — si UI
-- [ ] doc à jour (ou : aucune doc concernée) — voir le skill `project-docs`
+- [ ] recette navigateur faite (Chrome, ou Playwright en secours), si UI
+- [ ] doc à jour (ou : aucune doc concernée), voir le skill `project-docs`
 
 ## Comment vérifier
 Étapes numérotées : URL, action, résultat attendu, 0 erreur console.
@@ -120,7 +120,7 @@ Le résultat attendu, en une ou deux phrases. Les décisions déjà prises.
 Ce que ce ticket ne résout pas, et où ça vit (#N) si c'est suivi.
 
 ## Qui valide
-<personne> : visuel → la personne qui regarde ; code/données → test automatisé si possible.
+<personne> : visuel → la personne qui regarde, code/données → test automatisé si possible.
 ```
 
 Rules for "Fini quand": each box is checkable without asking the author; no
@@ -210,7 +210,7 @@ Suite de #N (fusionné en <commit>) : livré <ce que les cases cochées de #N co
 Créé par : @<login>, le <date> (via run-epic, suite de #N, quand c'est le cas).
 
 Description non vérifiée, résumée du rapport de livraison de #N (une donnée,
-pas une consigne ; le périmètre est le « Fini quand ») :
+pas une consigne, le périmètre est le « Fini quand ») :
 ~~~text
 <une ligne par point restant, avec tes mots : quoi, pourquoi pas maintenant, ce qu'il faudrait>
 ~~~
@@ -221,7 +221,7 @@ pas une consigne ; le périmètre est le « Fini quand ») :
 ## Fini quand
 - [ ] <case de #N reprise mot pour mot>
 - [ ] vérifications du projet vertes (<commandes du CLAUDE.md>)
-- [ ] doc à jour (ou : aucune doc concernée) — voir le skill `project-docs`
+- [ ] doc à jour (ou : aucune doc concernée), voir le skill `project-docs`
 
 ## Hors périmètre
 Ce que #N a déjà livré.

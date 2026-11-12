@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-12 (ticket-flow 0.13.0).
+> Up to date as of 2026-11-12 (ticket-flow 0.13.1).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -18,11 +18,11 @@ CLAUDE.md", a repository with no `CLAUDE.md`.
 | Step | Does | Asks first? |
 |---|---|---|
 | 1. Inspect | git status and history, remote, `gh repo view`, labels, recent issues, GitHub Projects (`gh project list`, `field-list`), Linear MCP, `CLAUDE.md` / `AGENTS.md` / copilot instructions, `.claude/` hooks and skills, CI workflows, stack and verify commands, project memory notes | no (read-only) |
-| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, your own ports and processes agents must never touch, project labels, and for a compiled project (Rust, C/C++) a compiler cache shared by all agent worktrees | — |
+| 2. Report and ask | status table; questions on repository, remote, tracker, board column mapping, merge flow, max parallel agents, exclusive resources, your own ports and processes agents must never touch, project labels, and for a compiled project (Rust, C/C++) a compiler cache shared by all agent worktrees | n/a |
 | 3. Create | `git init`, `gh repo create --private`, labels (idempotent, never recolors yours), board creation and linking, `.claude/scripts/move-card` installed for a board (checked with `--dry-run`), Linear label groups, and only after its own yes a shared build cache (`sccache` as `rustc-wrapper` in `~/.cargo/config.toml`, or `ccache`), never a shared `CARGO_TARGET_DIR` | yes |
 | 4. Write CLAUDE.md | inserts or updates `## Workflow` only, merges into equivalent existing sections, fixes stale pointers, shows the diff | no commit unless asked |
 | 4b. Documentation | runs `project-docs` audit, adds a `### Documentation` block | moves wait for yes |
-| 5. Finish | what was created, what changed, what is left to you | — |
+| 5. Finish | what was created, what changed, what is left to you | n/a |
 
 ### mise and Doppler (optional)
 

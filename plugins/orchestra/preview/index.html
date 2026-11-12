@@ -233,7 +233,7 @@ function render(data, columns, viewRows, isOpen) {
     }
     const lines = [
       [seg(name || '●', { fg: hue, b: true }), seg(' ' + cut(task, tr).padEnd(tr), { b: true }), seg(' ' + el, { fg: hue })],
-      [seg('ctx ', { d: true }), ...(p === undefined ? [seg('—', { d: true })] : gauge(p)), ...(detail ? [seg(' · ' + detail, { d: true })] : [])],
+      [seg('ctx ', { d: true }), ...(p === undefined ? [seg('-', { d: true })] : gauge(p)), ...(detail ? [seg(' · ' + detail, { d: true })] : [])],
       third,
     ]
     const av = avatarRows(r.endedAt === undefined ? FRAME : 0, hue)

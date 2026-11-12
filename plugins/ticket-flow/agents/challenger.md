@@ -67,10 +67,10 @@ VERDICT : BLOQUANT | OK AVEC RÉSERVES | OK
 Cible : <branche/worktree> @ <sha> (<n> fichiers relus)
 
 Fini quand :
-- [prouvé | non prouvé | à la main] <case, mot pour mot> — <preuve : commande → résultat, ou chemin:ligne>
+- [prouvé | non prouvé | à la main] <case, mot pour mot> : <preuve : commande → résultat, ou chemin:ligne>
 Vérifs : <commande> → <résultat>, une par ligne
 
-1. [BLOQUANT|RÉSERVE] <titre court> — `chemin:ligne`
+1. [BLOQUANT|RÉSERVE] <titre court> : `chemin:ligne`
    Constat : <ce qui est faux, et comment tu l'as vu>
    Attendu : <ce qu'il faut pour que ce soit juste>
 ```

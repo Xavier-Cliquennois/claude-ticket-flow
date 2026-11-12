@@ -68,7 +68,7 @@ Severity:
 VERDICT : BLOQUANT | OK AVEC RÉSERVES | OK
 Cible : <branche/PR/worktree> (<n> fichiers relus)
 
-1. [HIGH] [CONFIRMÉ] <titre court> — `chemin:ligne`
+1. [HIGH] [CONFIRMÉ] <titre court> : `chemin:ligne`
    Scénario : <qui envoie quoi, et ce qu'il obtient>
    Correctif : <le changement minimal>
    Dans le périmètre : oui | non (→ à ouvrir en ticket `sécurité`)

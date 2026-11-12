@@ -799,7 +799,7 @@ export const register: Register = on => {
             <Box flexDirection="row">
               <Box flexDirection="row" flexShrink={0}>
                 <Text dimColor>{'ctx '}</Text>
-                {pct === undefined ? [<Text dimColor>—</Text>] : gauge(pct)}
+                {pct === undefined ? [<Text dimColor>-</Text>] : gauge(pct)}
               </Box>
               {detail !== '' && (
                 <Box flexShrink={1}>

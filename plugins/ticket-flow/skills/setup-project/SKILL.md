@@ -64,7 +64,7 @@ only what you could not infer:
   or Linear (if a Linear MCP exists or the user says so). For Linear, ask team and
   project. For a GitHub Project: confirm which board, then map its Status options
   onto the five workflow states (à faire, en cours, à valider, bloqué, fini); a
-  state the board lacks is "—" (offer to add the option, e.g. « À tester »).
+  state the board lacks is "aucune" (offer to add the option, e.g. « À tester »).
   No board yet → offer `gh project create --owner <owner> --title <name>` and
   `gh project link <n> --owner <owner> --repo <owner>/<repo>`.
 - Merge flow: PR to the default branch / PR to `dev` then release PR /
@@ -227,13 +227,13 @@ section is older. Upgrading a section brings it to that number.
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
 - Tableau : GitHub Project <owner> #<n> « <titre> ». Statuts : à faire=`<option>`,
-  en cours=`<option>`, à valider=`<option|—>`, bloqué=`<option>`, fini=`<option>`.
+  en cours=`<option>`, à valider=`<option|aucune>`, bloqué=`<option>`, fini=`<option>`.
   Champs à remplir : <Phase, ... | aucun>.
-- Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau) ; jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
-- Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé ; seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
+- Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau). Jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
+- Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé. Seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
 - Labels obligatoires : un type, `model:fable|opus|sonnet`, `effort:medium|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
-- Un épic porte le label `epic` ; ses enfants sont des sous-issues ; les blocages passent par des liens « bloqué par », pas par une section en prose.
+- Un épic porte le label `epic`, ses enfants sont des sous-issues, et les blocages passent par des liens « bloqué par », pas par une section en prose.
 
 ### Environnement
 <!-- Keep this block only for what was approved; delete the lines that do not apply. -->
@@ -242,12 +242,12 @@ section is older. Upgrading a section brings it to that number.
 - CI : le seul secret GitHub est `DOPPLER_TOKEN` (lecture seule, une config). Un nouveau secret s'ajoute dans Doppler, pas dans GitHub.
 
 ### Livrer un ticket
-- Worktree : `git worktree add ../<repo>-<N> -b <branche>` ; branche `<convention>`.
+- Worktree : `git worktree add ../<repo>-<N> -b <branche>`, branche `<convention>`.
 - Vérifier : `<commandes réelles, dans l'ordre>`.
-- Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord ; Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois ; sinon écrire « test navigateur NON FAIT » et pourquoi.
-- Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion ; un constat HIGH/MEDIUM bloque la fusion ; un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
+- Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord. Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois. Sinon écrire « test navigateur NON FAIT » et pourquoi.
+- Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion. Un constat HIGH/MEDIUM bloque la fusion, un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
-- Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut) ; ne reste qu'une vérification à la main → « à valider » ; reste du code → ticket de suite, jamais un ticket laissé ouvert ; ouvrir les tickets révélés.
+- Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut). S'il ne reste qu'une vérification à la main : « à valider ». S'il reste du code : ticket de suite, jamais un ticket laissé ouvert. Ouvrir les tickets révélés.
 
 ### Petits changements
 - Un changement demandé par l'utilisateur, d'une ou deux lignes (une valeur, un réglage, une faute, une phrase de doc), sans comportement nouveau ni zone sensible (auth, données utilisateur, secrets, SQL, shell, rendu HTML), ne passe pas par un ticket. La session le fait elle-même, orchestrateur compris : branche courte, commandes de vérification, commit dont le message dit pourquoi, fusion selon le flux ci-dessus. Pas de `security-reviewer` hors zone sensible.
