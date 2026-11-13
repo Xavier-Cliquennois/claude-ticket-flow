@@ -122,7 +122,7 @@ skill owns; never recolor or rename the user's existing labels). Standard set:
 | `model:sonnet` | `0E8A16` | Travail cadré : le ticket dit quoi faire et comment le vérifier |
 | `effort:medium` | `D4C5F9` | L'agent tourne en effort `medium` : la plupart des tickets |
 | `effort:high` | `5319E7` | L'agent tourne en effort `high` : la justesse compte plus que le temps : sécurité, données, concurrence, contrat public, chemin critique |
-| `challenger` | `FBCA04` | L'agent `challenger` revérifie le « Fini quand » avant la fusion (pas pour un petit ticket cadré) |
+| `challenger` | `FBCA04` | L'agent `challenger` revérifie le « Fini quand » avant la fusion, seulement quand un faux « fini » serait plausible et coûteux (jamais sur de la doc) |
 | `epic` | `3E4B9E` | Parent d'une vague de sous-tickets |
 | `taille:S` | `C2E0C6` | Moins d'une demi-journée humaine, 1 à 3 fichiers |
 | `taille:M` | `FEF2C0` | Une journée humaine au plus, une seule responsabilité |
@@ -245,7 +245,7 @@ section is older. Upgrading a section brings it to that number.
 - Worktree : `git worktree add ../<repo>-<N> -b <branche>`, branche `<convention>`.
 - Vérifier : `<commandes réelles, dans l'ordre>`.
 - Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord. Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois. Sinon écrire « test navigateur NON FAIT » et pourquoi.
-- Revue : l'agent `security-reviewer` passe sur le diff avant toute fusion. Un constat HIGH/MEDIUM bloque la fusion, un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
+- Revue : l'agent `security-reviewer` passe avant la fusion quand le ticket porte `sécurité` ou que le diff touche une zone sensible (<zones du projet, ex. auth, données utilisateur, entrées non fiables, secrets, SQL, shell, rendu HTML, dépendances, CI et déploiement>). Un diff de doc, de commentaires, de tests ou de style seul ne passe par aucune revue. Un constat HIGH/MEDIUM bloque la fusion, un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
 - Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut). S'il ne reste qu'une vérification à la main : « à valider ». S'il reste du code : ticket de suite, jamais un ticket laissé ouvert. Ouvrir les tickets révélés.
 

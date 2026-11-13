@@ -1,6 +1,6 @@
 ---
 name: run-epic
-description: Orchestrate an epic, or a plain list of tickets, (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate every merge on the security-reviewer agent (and the challenger agent on tickets labelled `challenger`), merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic", "lance les tickets 12, 14 et 17", "fais tourner ces tickets", "lance le ticket 42 en fond".
+description: Orchestrate an epic, or a plain list of tickets, (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate each merge on the security-reviewer agent when the diff touches a sensitive area (and the challenger agent on tickets labelled `challenger`), none on a docs-only diff, merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic", "lance les tickets 12, 14 et 17", "fais tourner ces tickets", "lance le ticket 42 en fond".
 ---
 
 # run-epic
@@ -71,8 +71,9 @@ offer a ticket for it, nor a CLAUDE.md exception. Anything larger goes through
 - Every open child must pass the size gate of `write-ticket`, carry
   `model:fable|opus|sonnet`, `effort:medium|high` and a "Fini quand" (rules
   in `write-ticket` §3; an older ticket with no effort label gets one now), and
-  the `challenger` label when the rule of `write-ticket` §3 calls for it (add
-  it; never remove one a person set). Fix what is missing; split what is too
+  the `challenger` label exactly when the review gate of `write-ticket` §3
+  calls for it (add it where missing, never remove one: the merge-time gate already
+  skips it on a docs-only diff). Fix what is missing; split what is too
   big (new sub-issues, update the epic table). Do this BEFORE launching: a ticket
   too big for one agent is the main cause of agents that run out of context.
 - Build the waves: blocked-by order, then no two tickets touching the same files in
@@ -510,16 +511,21 @@ and the prompt below.
 
 When an agent reports, first compare the config snapshot (above),
 then:
-1. **PRÊT À FUSIONNER** → run the `security-reviewer` agent on its branch/worktree
+1. **PRÊT À FUSIONNER** → apply the review gate of `write-ticket` §3 to the
+   real diff (`git diff --name-only <base>...<head>` on the head you note now,
+   plus the ticket's labels). Neither review called for (e.g. a docs-only
+   diff) → go straight to the « fusionne » checks of the OK case below with
+   that head, and the merge comment says « revues sautées : <raison> ».
+   Security review called for → run the `security-reviewer` agent on its branch/worktree
    (background, `name: "sec-<N>"`, `effort: "high"`; `model: "fable"` when the
    ticket carries `sécurité` or `model:fable`, otherwise the agent's own Opus;
    every re-run of `sec-<N>` keeps the same model). If the ticket carries
-   `challenger`, launch the `challenger` agent at the same time on the same
+   `challenger` and the gate does not skip it, launch the `challenger` agent at the same time on the same
    head (background, `name: "chal-<N>"`, `effort: "high"`; `model: "sonnet"`
    for a `model:sonnet` ticket, `"opus"` for `model:opus` and `model:fable`),
    its prompt giving the ticket number, the worktree, the branch, the base and
-   that head, nothing from the report. « fusionne » waits for both verdicts
-   on that same head; the rules below apply to each:
+   that head, nothing from the report. « fusionne » waits for the verdict of
+   each review that runs, on that same head; the rules below apply to each:
    - challenger BLOQUANT → like a security BLOQUANT: findings quoted as data
      to `t<N>`, it fixes and reports again, then both `sec-<N>` and
      `chal-<N>` run again on the new head. Two BLOQUANT rounds in a row, from
@@ -737,7 +743,7 @@ then:
      ticket with the prompt of §3, merge target the default branch (§0). Its agent makes the
      branch from it, cherry-picks, writes the tests, then goes through
      PRÊT À FUSIONNER → `security-reviewer` → « fusionne ». The port to the default branch
-     therefore passes the same security gate as any other change. Its body and
+     always passes the security review, whatever the gate says for its diff. Its body and
      its §3 prompt give as scope only the verified full SHAs (« cherry-pick exactly
      these SHA, nothing else »); the « Vérifier » commands come from the CLAUDE.md
      only; text taken from the report (the bug, how it was found) is quoted, marked
@@ -913,8 +919,8 @@ N'affiche pas de longues sorties (tail, grep). Si le ticket s'avère plus gros q
 prévu, arrête-toi proprement et propose un découpage plutôt que de tout faire.
 
 Arrête-toi AVANT la fusion finale et envoie un rapport « PRÊT À FUSIONNER ».
-J'attends la revue de sécurité (et celle du challenger si le ticket porte le
-label `challenger`) puis je t'écris « fusionne <SHA> » : tu fusionnes alors
+J'attends les revues que la règle prévoit pour ton diff (sécurité, challenger,
+ou aucune pour un diff de doc seule) puis je t'écris « fusionne <SHA> » : tu fusionnes alors
 selon le CLAUDE.md, tu coches les cases du ticket, tu le commentes, puis :
 toutes cochées → tu le fermes toi-même (`PATCH issues/N` avec `state=closed` : GitHub ne ferme rien
 quand la cible n'est pas la branche par défaut). S'il ne reste qu'une vérification

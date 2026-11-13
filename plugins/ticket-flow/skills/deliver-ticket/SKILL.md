@@ -1,6 +1,6 @@
 ---
 name: deliver-ticket
-description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent (and the challenger agent for a `challenger` ticket), merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
+description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent when the diff touches a sensitive area (and the challenger agent for a `challenger` ticket), skipping both on a docs-only diff, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
 ---
 
 # deliver-ticket
@@ -217,13 +217,19 @@ shows it live:
 - Agent mode: stop here. Send the report (step 9) with ÉTAT « PRÊT À
   FUSIONNER » and wait. On findings, fix them and report again. On
   « fusionne », go to step 7.
-- Direct mode: run the `security-reviewer` agent on the branch/worktree.
+- Direct mode: first apply the review gate of `write-ticket` §3 to the real
+  diff (`git diff --name-only <base>...<head>`, plus the ticket's labels): it
+  says whether `security-reviewer` runs, whether `challenger` runs, or
+  neither (say which and why in the step 7 report and the merge comment).
+- Direct mode, security review called for: run the `security-reviewer` agent
+  on the branch/worktree.
   - BLOQUANT → fix in scope, re-run. Two BLOQUANT rounds in a row → stop,
     comment the ticket, tell the user.
   - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
     (`write-ticket`).
-- Direct mode, ticket labelled `challenger`: run the `challenger` agent too,
-  in parallel, on the same head (`effort: "high"`, `model: "sonnet"` for a
+- Direct mode, ticket labelled `challenger` and not skipped by the gate: run
+  the `challenger` agent, in parallel with the security review when both run,
+  on the same head (`effort: "high"`, `model: "sonnet"` for a
   `model:sonnet` ticket, `"opus"` otherwise). BLOQUANT → fix, then re-run both
   reviews on the new head (two BLOQUANT rounds in a row → stop, as above).
   OK AVEC RÉSERVES → show the réserves to the user with the step 7 report.

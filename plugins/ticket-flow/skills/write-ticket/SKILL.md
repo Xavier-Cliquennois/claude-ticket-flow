@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, `challenger` when the delivery needs a second check, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
+description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, `challenger` only when a false « done » would be plausible and costly, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
 ---
 
 # write-ticket
@@ -78,18 +78,47 @@ Effort, only two levels (no other value exists):
 Raise the effort before the model: an `opus` / `effort:high` ticket is often
 enough where `fable` is tempting.
 
+Review gate (applies to both reviews, decided twice: when the ticket is
+written, from what it will change, and again before the merge, from the real
+diff `git diff --name-only <base>...<head>`). Each review costs an agent run
+at effort `high`: run it only where it can catch something.
+
+Security review (`security-reviewer`) runs when either holds:
+- the ticket carries `sécurité`;
+- the diff touches a sensitive area: auth, sessions, permissions; user data
+  and its storage (models, migrations, SQL); a parser of untrusted input
+  (routes, forms, uploads, webhooks, files read from outside); secrets, env
+  and credential config; shell or subprocess calls; HTML rendering or
+  templates; dependencies (manifest, lockfile); CI, deploy, infra; hooks and
+  scripts that run commands.
+
+It does not run on a diff made only of: docs (`*.md`, `docs/`, diagrams),
+comments, tests and public fixtures, styles, wording that is not rendered
+as raw HTML, a rename or formatting with no logic change. A project's
+`CLAUDE.md` may list its own sensitive paths in its « Revue » line: that list
+wins. In doubt, run it.
+
 Challenger (`challenger` label): before the merge, the `challenger` agent
 re-proves the « Fini quand » itself instead of trusting the delivery report.
-Add the label when that report alone is not enough to trust, i.e. any of:
-- `model:opus` or `model:fable` (the agent made choices the ticket did not
-  settle);
-- `effort:high`, `taille:M` or `sécurité`;
-- a box proved by a judgment rather than a command result (a diagnosis, a bug
-  « fixed » with no test that reproduces it, a performance claim).
+Size and effort are not risk: add the label only when a false « done » is
+both plausible and costly, i.e. any of:
+- a box proved by a judgment rather than a command result (a diagnosis, a
+  bug « fixed » with no test that reproduces it, a performance claim);
+- `model:fable`, or `model:opus` on a ticket that changes code behaviour
+  (the agent made choices the ticket did not settle);
+- a code change on a `sécurité` ticket, a data migration, concurrency, a
+  public API or contract.
 
-Leave it off a small framed ticket: `taille:S`, `model:sonnet`,
-`effort:medium`, every box proved by a command anyone can rerun. A box that
-needs a human eye does not call for it: the challenger cannot tick it either.
+Never on: a `documentation` ticket; a ticket whose change is docs, comments,
+tests only, a config value, a rename or wording; a `taille:S` ticket whose
+boxes are all commands anyone can rerun; a `manuel` ticket. A box that needs
+a human eye does not call for it: the challenger cannot tick it either.
+
+Before the merge, a diff that holds only the skip list above (docs,
+comments, tests, styles, wording, rename) skips both reviews even on a
+labelled ticket, unless the user asked for them: the merge comment says
+« revues sautées : diff <nature> seul ». No skip on a `sécurité` ticket whose
+diff touches code.
 
 ## 4. Default template (child ticket)
 
@@ -201,7 +230,7 @@ tests not written). A box that only needs a manual check never makes a
 follow-up ticket: #N stays open in « à valider ».
 
 Title: « <titre de #N> : reste <quoi> ». Labels: model, effort and size of what is
-left (and `challenger` by the rule of §3) (size gate as usual), same type as #N; a `sécurité` #N passes on its
+left (and `challenger` by the review gate of §3) (size gate as usual), same type as #N; a `sécurité` #N passes on its
 label and its `security-reviewer` box.
 
 ```markdown

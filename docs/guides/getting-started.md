@@ -64,7 +64,7 @@ of working changes (a new board, a move to pull requests, a new test command).
 
 The skill reads the code involved, checks for duplicates, names the files
 likely touched, scores the ticket against the size gate, picks the model and effort labels
-(and `challenger` when the delivery needs a second check;
+(and `challenger` only when a false « done » would be plausible and costly;
 [how](../reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)),
 fills the template and creates the issue (and puts it on the board). If the
 ticket is too big it proposes an epic with smaller tickets and waves instead.
@@ -76,8 +76,8 @@ ticket is too big it proposes an epic with smaller tickets and waves instead.
 ```
 
 In this session: reads the ticket and its comments, opens a worktree, builds,
-verifies, updates the docs, runs `security-reviewer` (and `challenger` on a
-`challenger` ticket), merges on your « go »,
+verifies, updates the docs, runs `security-reviewer` when the diff is
+sensitive (and `challenger` on a `challenger` ticket), merges on your « go »,
 ticks the « done when » boxes and closes or moves the ticket. To run several
 tickets in the background, give the list to `run-epic`.
 

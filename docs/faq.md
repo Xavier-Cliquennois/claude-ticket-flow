@@ -45,9 +45,17 @@ examples: [choosing the model, the effort and the
 challenger](reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger).
 
 **Why did the challenger not run on my ticket?**
-It runs only on tickets labelled `challenger`. A small framed ticket
-(`taille:S`, `model:sonnet`, `effort:medium`, every box a command) goes
-without it. Add the label by hand if you want the second check anyway.
+It runs only on tickets labelled `challenger`, and never on a diff of docs,
+comments or tests only. Size and effort alone do not call for it: only a
+false « done » that is plausible and costly does (a box proved by a judgment,
+`model:fable`, risky code). Add the label by hand if you want the second
+check anyway, and say so for a docs-only ticket.
+
+**Why did the security review not run?**
+The ticket has no `sécurité` label and its diff touches no sensitive area
+(auth, user data, untrusted input, secrets, SQL, shell, HTML rendering,
+dependencies, CI and deploy). List your own sensitive paths in the « Revue »
+line of your `CLAUDE.md` if the default list misses one.
 
 **The challenger blocks the same ticket twice.**
 `run-epic` parks it, as for the security review. Read its findings: a box

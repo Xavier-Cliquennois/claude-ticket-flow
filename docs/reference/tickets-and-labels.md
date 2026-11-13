@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-11-10 (ticket-flow 0.11.0).
+> Up to date as of 2026-11-13 (ticket-flow 0.14.0).
 
 ## The size gate
 
@@ -48,7 +48,7 @@ labels are never renamed or recolored.
 | `model:sonnet` | The ticket says what to do and how to verify it |
 | `effort:medium` | The agent runs at effort `medium`: most tickets |
 | `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`); the usual effort for `model:fable` |
-| `challenger` | Before the merge, the `challenger` agent re-proves the "done when" boxes instead of trusting the delivery report. On any of: `model:opus` or `model:fable`, `effort:high`, `taille:M`, `sécurité`, a box proved by a judgment (diagnosis, bug fixed with no reproducing test, performance). Not on a `taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all commands |
+| `challenger` | Before the merge, the `challenger` agent re-proves the "done when" boxes instead of trusting the delivery report. Only when a false "done" is plausible and costly: a box proved by a judgment, `model:fable`, `model:opus` changing code behaviour, code on a `sécurité` ticket, data migration, concurrency, public API. Never on docs, tests only, config values, renames, or a `taille:S` ticket whose boxes are all commands |
 | `epic` | Parent of a wave of sub-issues (optional in Linear) |
 | `taille:S` | Under half a human day, 1-3 files |
 | `taille:M` | One human day at most, one responsibility |
@@ -98,33 +98,61 @@ The label is the exact effort passed to the agent, whatever the model: no
 other level is ever used. Raise the effort before the model: `opus` at
 `effort:high` is often enough where `fable` is tempting.
 
-### Challenger: only when the report is not enough
+### Reviews: only where they can catch something
 
-A delivery agent proves its own "done when" boxes. With the `challenger`
-label, the `challenger` agent checks them again before the merge, without
-trusting the report: it re-proves each box, re-runs the `CLAUDE.md` checks,
-and verifies each test would fail without the change.
+Each review is an extra agent run at effort `high`. The rule is applied
+twice: by `write-ticket` from what the ticket will change, and before the
+merge from the real diff (`git diff --name-only <base>...<head>`), which
+wins.
 
-Add `challenger` when any of these holds:
-- `model:opus` or `model:fable`: the agent made choices the ticket did not
-  settle;
-- `effort:high`, `taille:M` or `sécurité`;
-- a box is proved by a judgment rather than a command result: a diagnosis, a
-  bug "fixed" with no test that reproduces it, a performance claim.
+```mermaid
+flowchart TD
+  D{"Diff only docs, comments, tests,<br/>styles, wording or a rename?"}
+  D -->|yes| N["no review<br/>(merge comment says why)"]
+  D -->|no| S{"sécurité label or a<br/>sensitive area touched?"}
+  S -->|yes| SR["security-reviewer"]
+  S -->|no| NS["no security review"]
+  SR --> C{"challenger label?"}
+  NS --> C
+  C -->|yes| CH["challenger, same commit"]
+```
 
-Leave it off a small framed ticket: `taille:S`, `model:sonnet`,
-`effort:medium`, every box proved by a command anyone can rerun. A box that
-needs a human eye does not call for it: the challenger cannot tick it either.
-`run-epic` adds the label when the rule calls for it and never removes one a
-person set.
+**Security review** runs when the ticket carries `sécurité` or the diff
+touches a sensitive area: auth, sessions, permissions; user data and its
+storage (models, migrations, SQL); a parser of untrusted input (routes,
+forms, uploads, webhooks); secrets, env and credential config; shell or
+subprocess calls; HTML rendering or templates; dependencies; CI, deploy,
+infra; hooks and scripts that run commands. A project lists its own
+sensitive paths in the « Revue » line of its `CLAUDE.md`; that list wins. In
+doubt, it runs.
+
+**Challenger** (`challenger` label): a delivery agent proves its own "done
+when" boxes; the `challenger` agent checks them again before the merge,
+without trusting the report: it re-proves each box, re-runs the `CLAUDE.md`
+checks, and verifies each test would fail without the change. Size and
+effort are not risk. Add the label only when a false "done" is plausible and
+costly:
+- a box proved by a judgment rather than a command result: a diagnosis, a
+  bug "fixed" with no test that reproduces it, a performance claim;
+- `model:fable`, or `model:opus` on a ticket that changes code behaviour;
+- a code change on a `sécurité` ticket, a data migration, concurrency, a
+  public API or contract.
+
+Never on a `documentation` ticket, a change of docs, comments, tests only, a
+config value, a rename or wording, a `taille:S` ticket whose boxes are all
+commands, or a `manuel` ticket. A box that needs a human eye does not call
+for it: the challenger cannot tick it either. `run-epic` adds the label
+where the rule calls for it and never removes one; a docs-only diff skips
+it at merge time anyway, unless you asked for it. A `sécurité` ticket whose
+diff touches code is never skipped.
 
 ### Who runs on what
 
 | Agent | Model | Effort | When |
 |---|---|---|---|
 | Delivery agent `t<N>` | the ticket's model label | the ticket's effort label | every ticket |
-| `security-reviewer` (`sec-<N>`) | Opus; Fable on a `sécurité` or `model:fable` ticket | `high` | before every merge |
-| `challenger` (`chal-<N>`) | Sonnet on a `model:sonnet` ticket, Opus on `model:opus` and `model:fable` | `high` | before the merge of a `challenger` ticket, in parallel with `security-reviewer`, on the same commit |
+| `security-reviewer` (`sec-<N>`) | Opus; Fable on a `sécurité` or `model:fable` ticket | `high` | before the merge, when the ticket carries `sécurité` or the diff touches a sensitive area |
+| `challenger` (`chal-<N>`) | Sonnet on a `model:sonnet` ticket, Opus on `model:opus` and `model:fable` | `high` | before the merge of a `challenger` ticket whose diff is not docs/tests only, in parallel with `security-reviewer` when it runs, on the same commit |
 
 The challenger is never on Fable: it checks the work against the ticket's
 criteria, it does not redo the ticket's decisions. Its verdict:

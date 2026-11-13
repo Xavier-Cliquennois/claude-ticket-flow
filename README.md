@@ -6,14 +6,14 @@ Claude Code the skills to follow it:
 - **tickets small enough for one agent**: a size gate splits anything bigger into an epic;
 - **one ticket delivered end to end** in the session: worktree, checks, docs, review, merge, boxes ticked;
 - **epics or ticket lists run in waves** by background agents, with a cap on how many run at once;
-- **a security review before every merge**, by a dedicated read-only agent;
+- **a security review before every sensitive merge** (never on docs only), by a dedicated read-only agent;
 - **clean documentation**, updated in the same commit as the code, with Mermaid and SVG diagrams;
 - **project brainstorming** grounded in the code, the tickets and the history;
 - **a live view** of the orchestrator and of each agent (the optional `orchestra` mod).
 
 It works with GitHub issues, GitHub Projects boards and Linear.
 
-> Up to date as of 2026-11-12 (`ticket-flow` 0.13.2, `orchestra` 0.6.1), tested with Claude Code 2.1.295.
+> Up to date as of 2026-11-13 (`ticket-flow` 0.14.0, `orchestra` 0.6.1), tested with Claude Code 2.1.295.
 
 ## Install
 
@@ -49,7 +49,7 @@ flowchart LR
   D --> R
   E -->|"one agent per ticket, N at most"| A["delivery agents"]
   A -.->|"follow"| D
-  A -->|"READY TO MERGE"| R["security-reviewer<br/>+ challenger if labelled"]
+  A -->|"READY TO MERGE"| R["security-reviewer if sensitive<br/>+ challenger if labelled"]
   R -->|"OK"| M["merge, one at a time"]
   R -->|"BLOCKING"| A
   E -.->|"stage"| O["orchestra pane"]
@@ -61,8 +61,8 @@ flowchart LR
 | `write-ticket` | skill | Ticket and epic templates with a "done when" checklist and who created it (the person to ask); always asks who takes the ticket; model, effort, size, type, security and challenger labels; **splits tickets too big for one agent**; puts tickets on the board. |
 | `deliver-ticket` | skill | Delivers one ticket end to end in the session: worktree, build, verify, docs, security review, merge, boxes, board. Also the procedure `run-epic`'s agents follow. |
 | `run-epic` | skill | Orchestrates an epic or a list of tickets in the background: waves, capped parallel agents, security gate, serialized merges, checkboxes, board moves, revealed tickets. |
-| `security-reviewer` | agent | Read-only review of a diff; verdict BLOCKING / OK WITH RESERVATIONS / OK with verified findings. |
-| `challenger` | agent | Read-only challenge of a delivery on tickets labelled `challenger`: re-proves each "done when" box, re-runs the checks, checks the tests really test; same verdicts. |
+| `security-reviewer` | agent | Read-only review of a diff, run when the ticket is `sécurité` or the diff touches a sensitive area (never on docs only); verdict BLOCKING / OK WITH RESERVATIONS / OK with verified findings. |
+| `challenger` | agent | Read-only challenge of a delivery on tickets labelled `challenger` (only where a false "done" is plausible and costly, never on docs): re-proves each "done when" box, re-runs the checks, checks the tests really test; same verdicts. |
 | `project-docs` | skill | Documentation standard (layout, naming, Mermaid, SVG) and a docs audit mode. |
 | `brainstorm` | skill | Facilitated session about the project: ground, diverge, converge, turn picks into tickets. |
 | doc reminder | hook | Before every `git commit`, reminds Claude to check the docs still describe the code. |

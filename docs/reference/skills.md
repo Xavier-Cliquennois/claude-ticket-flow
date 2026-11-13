@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-12 (ticket-flow 0.13.2).
+> Up to date as of 2026-11-13 (ticket-flow 0.14.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -129,7 +129,7 @@ delivery skill, that one is followed instead.
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched; never weakens an assertion or adds an API route, flag or test hook just to make a box tickable: it stops on that box and says so |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
-| 6. Review | `security-reviewer`, and `challenger` in parallel on a `challenger` ticket; BLOCKING fixed and both re-run, twice at most |
+| 6. Review | review gate on the real diff: `security-reviewer` if `sécurité` or a sensitive area is touched, `challenger` in parallel on a `challenger` ticket, none on a docs/tests-only diff; BLOCKING fixed and both re-run, twice at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
 | 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the rest moves to a follow-up ticket and the ticket is closed (direct mode: it does both; agent mode: it leaves the ticket open and the orchestrator does both); a security box left is said before the merge; creates revealed tickets |
 
@@ -281,7 +281,7 @@ Key behaviours:
   re-launch, never a `t<N>c`. An unclear error, or a second failure after
   `t<N>b`, is handled as BLOCKED;
 - never calls a blocking question while agents run;
-- `security-reviewer` before every merge, `challenger` too on tickets labelled `challenger` (same head, in parallel); merges serialized;
+- review gate on each diff: `security-reviewer` when `sécurité` or a sensitive area, `challenger` on tickets labelled `challenger` (same head, in parallel), none on a docs/tests-only diff; merges serialized;
 - board kept true; the epic's « Vagues » section shows where each wave and
   ticket stands: a « Statut » column per wave in the table (empty until a
   ticket is launched, 🟡 once one is, 🧪 when all are delivered but a human
@@ -408,7 +408,10 @@ the repository.
 
 ## security-reviewer (agent)
 
-Read-only (`Read`, `Grep`, `Glob`, `Bash`), runs on Opus at effort `high`;
+Read-only (`Read`, `Grep`, `Glob`, `Bash`), runs on Opus at effort `high`,
+before a merge whose ticket carries `sécurité` or whose diff touches a
+sensitive area (rule in
+[tickets-and-labels.md](tickets-and-labels.md#reviews-only-where-they-can-catch-something));
 `run-epic` moves it to Fable for a ticket labelled `sécurité` or
 `model:fable`, where a missed flaw costs the most. Given a branch, a
 worktree or a PR (default: the working tree's diff), it reviews the changed
@@ -428,9 +431,9 @@ RESERVATIONS, OK. Out-of-scope findings become tickets.
 ## challenger (agent)
 
 Read-only (`Read`, `Grep`, `Glob`, `Bash`), effort `high`, run before the
-merge of a ticket labelled `challenger` (rule in
-[tickets-and-labels.md](tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)), next to
-`security-reviewer` on the same head. Model: Sonnet for a `model:sonnet`
+merge of a ticket labelled `challenger` whose diff is not docs or tests only (rule in
+[tickets-and-labels.md](tickets-and-labels.md#reviews-only-where-they-can-catch-something)), next to
+`security-reviewer` on the same head when it runs. Model: Sonnet for a `model:sonnet`
 ticket, Opus for `model:opus` and `model:fable`: it checks the work against
 the ticket's criteria, it does not redo the ticket's decisions.
 

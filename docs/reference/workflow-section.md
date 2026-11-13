@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-12 (ticket-flow 0.13.2).
+> Up to date as of 2026-11-13 (ticket-flow 0.14.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
 line under the heading is a template marker, `<!-- ticket-flow workflow: 6 -->`:
@@ -24,7 +24,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Worktree and branch convention | deliver-ticket, run-epic (agent prompt) | `../<repo>-<N>`, branch from the ticket |
 | Verify commands, in order | deliver-ticket, run-epic, write-ticket ("done when") | inferred from `package.json` / `pyproject.toml` |
 | Browser check rule | deliver-ticket, run-epic | Chrome, then Playwright, else NOT DONE |
-| Review rule | deliver-ticket, run-epic | `security-reviewer`, HIGH/MEDIUM in scope block |
+| Review rule | deliver-ticket, run-epic | `security-reviewer` when `sécurité` or a sensitive area, none on docs only; HIGH/MEDIUM in scope block |
 | Merge flow (PR to main / PR to `dev` then release / local `--no-ff`) | deliver-ticket, run-epic | what git history suggests |
 | Max parallel agents | run-epic | 3 |
 | Exclusive resources (never two at once) | deliver-ticket, run-epic | none |
@@ -71,7 +71,10 @@ This block exists only when the project chose mise and/or Doppler.
 - Verify: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 - Browser (UI): Chrome first; Playwright if Chrome is closed or fails 2-3
   times; otherwise write "browser test NOT DONE" and why.
-- Review: `security-reviewer` on the diff before any merge; HIGH/MEDIUM block;
+- Review: `security-reviewer` before the merge when the ticket carries
+  `sécurité` or the diff touches a sensitive area (auth, user data, untrusted
+  input, secrets, SQL, shell, HTML rendering, dependencies, CI and deploy);
+  a docs, comments, tests or styles only diff gets no review; HIGH/MEDIUM block;
   out-of-scope findings become `sécurité` tickets. A `challenger` ticket also
   goes through the `challenger` agent (in parallel, same commit); its
   BLOCKING blocks the merge.

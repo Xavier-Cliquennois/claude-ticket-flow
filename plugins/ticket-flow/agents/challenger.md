@@ -1,6 +1,6 @@
 ---
 name: challenger
-description: Read-only challenge of a delivered ticket before it is merged - re-proves each "Fini quand" box itself instead of trusting the delivery report, re-runs the project's verify commands, checks the tests really test the change, and flags work outside the ticket's scope or missing docs and tests. Returns a verdict BLOQUANT / OK AVEC RÉSERVES / OK. Use before the merge of every ticket labelled `challenger` (run-epic, deliver-ticket), next to security-reviewer, and whenever the user asks to challenge a delivery.
+description: Read-only challenge of a delivered ticket before it is merged - re-proves each "Fini quand" box itself instead of trusting the delivery report, re-runs the project's verify commands, checks the tests really test the change, and flags work outside the ticket's scope or missing docs and tests. Returns a verdict BLOQUANT / OK AVEC RÉSERVES / OK. Use before the merge of a ticket labelled `challenger` (run-epic, deliver-ticket) unless its diff is docs, comments or tests only, and whenever the user asks to challenge a delivery.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 effort: high

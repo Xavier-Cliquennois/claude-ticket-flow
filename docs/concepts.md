@@ -10,7 +10,7 @@ Work is written down as tickets before it is done. Each ticket is small enough
 for one Claude Code agent to deliver in one session, and says how anyone can
 check it is done. Related tickets form an epic. One orchestrator session runs
 an epic by handing each ticket to a background agent, a few at a time, and
-merges their work one by one after a security review (and a challenger
+merges their work one by one after a security review where the diff is sensitive (and a challenger
 that re-checks the work, on the tickets that need one). Documentation moves with
 the code. The project's `CLAUDE.md` holds the few settings that differ from one
 project to another; everything else is the same everywhere.
@@ -96,10 +96,14 @@ parks what depends on it and keeps the other slots busy.
 It never reads diffs, logs or code. Agents send a fixed 25-line report; the
 orchestrator decides from that.
 
-### A security review gates every merge
+### A security review gates sensitive merges
 
-Agents stop before their final merge and report READY TO MERGE. The
-orchestrator runs the read-only `security-reviewer` agent on the branch.
+Agents stop before their final merge and report READY TO MERGE. When the
+ticket carries `sécurité` or the diff touches a sensitive area (auth, user
+data, untrusted input, secrets, SQL, shell, HTML rendering, dependencies,
+CI and deploy), the orchestrator runs the read-only `security-reviewer`
+agent on the branch. A diff of docs, comments, tests or styles only goes
+without it.
 HIGH or MEDIUM findings in scope block the merge and go back to the agent;
 findings outside the ticket's scope become `sécurité` tickets and do not block.
 
@@ -109,11 +113,11 @@ A delivery agent proves its own « done when » boxes. On a ticket labelled
 `challenger`, the orchestrator does not take its word: the read-only
 `challenger` agent, run next to the security review on the same commit,
 re-proves each box, re-runs the project's checks and verifies the tests
-would fail without the change. The label goes on any ticket that is not
-small and framed: `model:opus` or `model:fable`, `effort:high`, `taille:M`,
-`sécurité`, or a box proved by a judgment rather than a command. A
-`taille:S` / `model:sonnet` / `effort:medium` ticket whose boxes are all
-commands goes without it.
+would fail without the change. The label goes only where a false « done »
+is plausible and costly: a box proved by a judgment, `model:fable`,
+`model:opus` changing code behaviour, code on a `sécurité` ticket, a data
+migration, concurrency, a public API. Never on docs, tests only, a config
+value or a rename.
 
 ### One merge at a time
 
