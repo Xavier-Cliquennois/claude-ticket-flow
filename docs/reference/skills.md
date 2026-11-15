@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-13 (ticket-flow 0.14.0).
+> Up to date as of 2026-11-15 (ticket-flow 0.15.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -263,8 +263,14 @@ Key behaviours:
   for `main` it proposes a `sécurité` ticket (only on your "go"). The agent's
   report has a `Findings sécurité` line per finding; no "fusionne" while one is
   unaddressed (a contested finding of any severity goes to you), a head changed since the
-  security review is re-reviewed first, and agents make no commit after the
+  security review is re-reviewed first (unless the commits since only touch
+  docs, comments or tests), and agents make no commit after the
   review except the rebase (a rebase conflict means BLOQUÉ);
+- review rounds are kept few: only a BLOQUANT or a MEDIUM-or-higher finding
+  sends a ticket back to its agent (LOW findings and réserves go to the merge
+  comment and to you), only the reviewer whose finding was fixed runs again,
+  two rounds at most (then the ticket is parked), and a fix mechanism a
+  finding proposes is checked with the reviewer before it is ordered;
 - an agent that ends on an API or network error is resumed, not relaunched:
   once the API and the tracker answer again (still down after 30 minutes: it
   tells you), the orchestrator inspects, read-only, the worktree and branch it
@@ -281,7 +287,7 @@ Key behaviours:
   re-launch, never a `t<N>c`. An unclear error, or a second failure after
   `t<N>b`, is handled as BLOCKED;
 - never calls a blocking question while agents run;
-- review gate on each diff: `security-reviewer` when `sécurité` or a sensitive area, `challenger` on tickets labelled `challenger` (same head, in parallel), none on a docs/tests-only diff; merges serialized;
+- review gate on each diff: `security-reviewer` when `sécurité` or a sensitive area, `challenger` on tickets labelled `challenger` (same head, in parallel), none on a docs/tests-only diff; merges serialized; review rounds kept few (see below);
 - board kept true; the epic's « Vagues » section shows where each wave and
   ticket stands: a « Statut » column per wave in the table (empty until a
   ticket is launched, 🟡 once one is, 🧪 when all are delivered but a human

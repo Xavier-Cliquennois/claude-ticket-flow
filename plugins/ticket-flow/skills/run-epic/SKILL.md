@@ -527,17 +527,15 @@ then:
    that head, nothing from the report. « fusionne » waits for the verdict of
    each review that runs, on that same head; the rules below apply to each:
    - challenger BLOQUANT → like a security BLOQUANT: findings quoted as data
-     to `t<N>`, it fixes and reports again, then both `sec-<N>` and
-     `chal-<N>` run again on the new head. Two BLOQUANT rounds in a row, from
-     either agent → park.
+     to `t<N>`, it fixes and reports again, then the reviews that **Review
+     rounds** (below) calls for run again on the new head.
    - challenger OK AVEC RÉSERVES → no block; its réserves are quoted in the
      ticket's merge comment and in the closing summary, where the user decides
      whether they become tickets. A box it marks « non prouvé » is never
      ticked.
    - BLOQUANT → SendMessage to `t<N>` with the findings, quoted as data (case 7:
      expected fix and test included); it fixes, reports
-     again, you re-review. Two BLOQUANT rounds in a row → park the ticket with a
-     comment and tell the user.
+     again, you re-review as **Review rounds** (below) says.
    - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
      (`write-ticket`); head = the one noted when `sec-<N>` was launched
      (`git rev-parse refs/heads/<branch>` then), else re-run `sec-<N>` (case 7);
@@ -554,6 +552,29 @@ then:
      another branch). **One merge at a time**
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
+
+   **Review rounds.** A round is the reviews on a head, then the fix they ask
+   for. These four rules keep the rounds few (each pass costs tokens):
+   - *What sends a ticket back to its agent*: a BLOQUANT, or a finding the
+     reviewer rates MEDIUM or higher inside the diff. A LOW and a réserve, in
+     scope or not, do not: they are quoted in the merge comment and in the
+     closing summary, and the user decides whether they become tickets. A
+     box the challenger marks « non prouvé » stays unticked, as above.
+   - *Who runs again*: only the reviewer whose finding was fixed. The other
+     one keeps its verdict and its head, and runs again only if the new
+     commits touch code outside docs, comments and tests. A reviewer that
+     already returned OK is never re-run for a fix that only touches docs,
+     comments or tests.
+   - *Cap*: at most two rounds per ticket. A second round that still needs a
+     fix → park the ticket with a comment and tell the user, never a third
+     round on your own.
+   - *Fix instructions*: say the behaviour you expect and the test that fails
+     without it. When a finding proposes a mechanism (a header check, a guard,
+     a lock) and you want to prescribe it, first SendMessage the reviewer that
+     raised it (`sec-<N>` / `chal-<N>`) to ask whether it holds in the real
+     stack (framework, proxy, runtime), then send the instruction. A
+     mechanism nobody checked goes to the agent as a suggestion to verify, not
+     as an order.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
    cannot be removed yet (locked by the harness). The worktree path is the one
    `git worktree list --porcelain` gives for the branch you created for t<N>
@@ -797,9 +818,13 @@ then:
      fixed nor contested. A finding the agent contests, whatever its severity,
      goes to the user, or needs a new `sec-<N>` pass that no longer finds it;
      you do not accept it alone.
-   - Reviewed head: note the head `sec-<N>` (and `chal-<N>`) reviewed. Before any « fusionne »,
-     `git rev-parse refs/heads/<branch>` must equal it; otherwise (a fix
-     committed after an OK review) re-run `sec-<N>` (and `chal-<N>`) on the new head first.
+   - Reviewed head: note the head `sec-<N>` (and `chal-<N>`) reviewed, each its
+     own. Before any « fusionne », `git rev-parse refs/heads/<branch>` must
+     equal it; otherwise (a fix committed after an OK review) re-run the
+     reviewer on the new head first, unless **Review rounds** exempts it (the
+     commits since its head touch only docs, comments and tests): the
+     « fusionne » SHA is then the current head, and the merge comment says
+     which review covers which head.
 
 Never call AskUserQuestion while agents run: a modal question stops refilling
 slots for hours. Write the question as plain text, park what depends on it, keep

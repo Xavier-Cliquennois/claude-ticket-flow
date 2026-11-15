@@ -3,7 +3,7 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-13 (ticket-flow 0.14.0).
+> Up to date as of 2026-11-15 (ticket-flow 0.15.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
 line under the heading is a template marker, `<!-- ticket-flow workflow: 6 -->`:
@@ -78,6 +78,8 @@ This block exists only when the project chose mise and/or Doppler.
   out-of-scope findings become `sécurité` tickets. A `challenger` ticket also
   goes through the `challenger` agent (in parallel, same commit); its
   BLOCKING blocks the merge.
+  Only a BLOCKING or MEDIUM-or-higher finding triggers a fix round (two rounds
+  at most); LOW findings and réserves go to the merge comment.
 - Merge: PR to `main`, merge commit, after green CI.
 - Closing: tick "done when" boxes as you go, comment what was checked, close
   it yourself when every box is ticked (`Closes #N` does nothing when the merge

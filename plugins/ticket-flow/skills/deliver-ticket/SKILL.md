@@ -223,17 +223,29 @@ shows it live:
   neither (say which and why in the step 7 report and the merge comment).
 - Direct mode, security review called for: run the `security-reviewer` agent
   on the branch/worktree.
-  - BLOQUANT → fix in scope, re-run. Two BLOQUANT rounds in a row → stop,
-    comment the ticket, tell the user.
+  - BLOQUANT, or a finding rated MEDIUM or higher inside the diff → fix in
+    scope, re-run (see the round rules below).
   - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
-    (`write-ticket`).
+    (`write-ticket`). A LOW or a réserve is not fixed before the merge: show
+    it with the step 7 report, the user decides whether it becomes a ticket.
 - Direct mode, ticket labelled `challenger` and not skipped by the gate: run
   the `challenger` agent, in parallel with the security review when both run,
   on the same head (`effort: "high"`, `model: "sonnet"` for a
-  `model:sonnet` ticket, `"opus"` otherwise). BLOQUANT → fix, then re-run both
-  reviews on the new head (two BLOQUANT rounds in a row → stop, as above).
+  `model:sonnet` ticket, `"opus"` otherwise). BLOQUANT → fix, then re-run
+  per the round rules below.
   OK AVEC RÉSERVES → show the réserves to the user with the step 7 report.
   A box it marks « non prouvé » is not ticked.
+- Round rules (each review pass costs tokens):
+  - Re-run only the reviewer whose finding was fixed. The other keeps its
+    verdict and head, and runs again only if the new commits touch code
+    outside docs, comments and tests. A reviewer already OK is never re-run
+    for a fix that only touches docs, comments or tests.
+  - At most two rounds. A second round that still needs a fix → stop, comment
+    the ticket, tell the user.
+  - Fix from a finding that proposes a mechanism (a header check, a guard):
+    before applying it, ask the reviewer that raised it (`SendMessage`) whether
+    it holds in the real stack, or verify it yourself in the code. A mechanism
+    nobody checked is a suggestion, not a fix.
 
 ## 7. Merge
 
