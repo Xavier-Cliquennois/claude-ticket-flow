@@ -10,8 +10,8 @@ Work is written down as tickets before it is done. Each ticket is small enough
 for one Claude Code agent to deliver in one session, and says how anyone can
 check it is done. Related tickets form an epic. One orchestrator session runs
 an epic by handing each ticket to a background agent, a few at a time, and
-merges their work one by one after a security review where the diff is sensitive (and a challenger
-that re-checks the work, on the tickets that need one). Documentation moves with
+merges their work one by one after a review where the diff is sensitive (a security review, plus a
+challenge that re-checks the work on the tickets that need one, in one agent run). Documentation moves with
 the code. The project's `CLAUDE.md` holds the few settings that differ from one
 project to another; everything else is the same everywhere.
 
@@ -65,9 +65,8 @@ always means « only a check is left ».
 `model:sonnet` when the ticket says what to do and how to verify it.
 `model:opus` when the agent has to choose between options the ticket does not
 settle (architecture, product, an investigation, a large scope).
-`model:fable` (Claude Fable 5.2, the most capable and the most expensive)
-when that choice is costly to get wrong and hard to check: security design,
-a concurrency bug, a data migration, the foundation of an epic.
+Fable is not used by the workflow: a costly choice stays `model:opus`, with
+`effort:high` and a `challenger` where a false « done » would be plausible.
 
 `effort:medium` for most tickets, `effort:high` when correctness matters
 more than time; there is no other level. `run-epic` launches each agent on
@@ -96,28 +95,31 @@ parks what depends on it and keeps the other slots busy.
 It never reads diffs, logs or code. Agents send a fixed 25-line report; the
 orchestrator decides from that.
 
-### A security review gates sensitive merges
+### One review run gates sensitive merges
 
 Agents stop before their final merge and report READY TO MERGE. When the
 ticket carries `sécurité` or the diff touches a sensitive area (auth, user
 data, untrusted input, secrets, SQL, shell, HTML rendering, dependencies,
-CI and deploy), the orchestrator runs the read-only `security-reviewer`
-agent on the branch. A diff of docs, comments, tests or styles only goes
+CI and deploy), the orchestrator runs the read-only `reviewer`
+agent (security mode) on the branch. A diff of docs, comments, tests or styles only goes
 without it.
 HIGH or MEDIUM findings in scope block the merge and go back to the agent;
 findings outside the ticket's scope become `sécurité` tickets and do not block.
+LOW findings and réserves never send a ticket back: they go to the merge
+comment. A re-review happens only after a MEDIUM-or-higher security finding
+was fixed, and two rounds at most (a measured epic found nothing new in any
+of its re-passes).
 
-### A challenger on the tickets that need one
+### A challenge on the tickets that need one
 
 A delivery agent proves its own « done when » boxes. On a ticket labelled
-`challenger`, the orchestrator does not take its word: the read-only
-`challenger` agent, run next to the security review on the same commit,
-re-proves each box, re-runs the project's checks and verifies the tests
-would fail without the change. The label goes only where a false « done »
-is plausible and costly: a box proved by a judgment, `model:fable`,
-`model:opus` changing code behaviour, code on a `sécurité` ticket, a data
-migration, concurrency, a public API. Never on docs, tests only, a config
-value or a rename.
+`challenger`, the orchestrator does not take its word: the `challenge` mode of
+the same `reviewer` run re-proves each box, re-runs the project's checks once
+and verifies the tests would fail without the change. The label goes only on
+a ticket with no security review where a false « done » is plausible and
+costly: a box proved by a judgment, `model:opus` changing code behaviour, a
+data migration, concurrency, a public API. A `sécurité` ticket gets it only on
+request. Never on docs, tests only, a config value or a rename.
 
 ### One merge at a time
 

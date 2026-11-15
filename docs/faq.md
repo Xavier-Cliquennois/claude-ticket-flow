@@ -38,18 +38,18 @@ resources, and limit test workers in the verify commands.
 
 **Which model and effort should a ticket get?**
 Two questions: does the agent have to choose something the ticket does not
-settle (no → `model:sonnet`), and would a wrong choice be costly and hard to
-see (no → `model:opus`, yes → `model:fable`). Then `effort:high` when
-correctness matters more than time, else `effort:medium`. Details and
+settle (no → `model:sonnet`, yes → `model:opus`). Fable is never used. Then
+`effort:high` when correctness matters more than time, else `effort:medium`. Details and
 examples: [choosing the model, the effort and the
 challenger](reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger).
 
 **Why did the challenger not run on my ticket?**
-It runs only on tickets labelled `challenger`, and never on a diff of docs,
-comments or tests only. Size and effort alone do not call for it: only a
-false « done » that is plausible and costly does (a box proved by a judgment,
-`model:fable`, risky code). Add the label by hand if you want the second
-check anyway, and say so for a docs-only ticket.
+The challenge mode runs only on tickets labelled `challenger`, and never on a
+diff of docs, comments or tests only. A `sécurité` ticket does not get the
+label on its own: the security review already reads the diff. Size and effort
+do not call for it either, only a false « done » that is plausible and costly
+(a box proved by a judgment, risky code, with no security review). Add the
+label by hand if you want it anyway, and say so for a docs-only ticket.
 
 **Why did the security review not run?**
 The ticket has no `sécurité` label and its diff touches no sensitive area
@@ -57,8 +57,8 @@ The ticket has no `sécurité` label and its diff touches no sensitive area
 dependencies, CI and deploy). List your own sensitive paths in the « Revue »
 line of your `CLAUDE.md` if the default list misses one.
 
-**The challenger blocks the same ticket twice.**
-`run-epic` parks it, as for the security review. Read its findings: a box
+**The review blocks the same ticket twice.**
+`run-epic` parks it after two rounds, security or challenge. Read its findings: a box
 that cannot be proved by a command may need rewriting, or a human check.
 
 **The security review blocks the same ticket twice.**

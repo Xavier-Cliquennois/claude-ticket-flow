@@ -26,7 +26,7 @@ sequenceDiagram
   participant U as You
   participant O as Orchestrator
   participant A as Ticket agent tN
-  participant R as security-reviewer (+ challenger)
+  participant R as reviewer (security and/or challenge)
   O->>O: read CLAUDE.md, epic, children, worktrees, free memory
   O->>O: size gate, waves, park human-only tickets
   O->>U: plan (waves, N, merge order)
@@ -80,7 +80,7 @@ final merge, and the report format.
 
 | Agent reports | Orchestrator does |
 |---|---|
-| READY TO MERGE | applies the review gate to the diff: `security-reviewer` when `sécurité` or a sensitive area, `challenger` in parallel on a ticket labelled `challenger`, none on a docs/tests-only diff; BLOCKING from either → sends the findings back; OK → "merge", once the previous merge is done |
+| READY TO MERGE | applies the review gate to the diff: one `reviewer` run: security mode when `sécurité` or a sensitive area, challenge mode on a ticket labelled `challenger`, none on a docs/tests-only diff; BLOCKING from either mode → sends the findings back (a second review only after a MEDIUM-or-higher security fix, two rounds at most); OK → "merge", once the previous merge is done |
 | MERGED | checks the ticket's real state: closed → ✅; to validate → 🧪; code left → follow-up ticket, original closed; comments the epic, refills the slot |
 | BLOCKED / NOT DELIVERED | comments the reason, parks the ticket, refills the slot; relaunches once at most |
 | revealed tickets | creates them with `write-ticket` (sub-issue if the epic needs them) |

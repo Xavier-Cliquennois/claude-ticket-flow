@@ -3,10 +3,10 @@
 The per-project settings every ticket-flow skill reads, field by field, with
 examples.
 
-> Up to date as of 2026-11-15 (ticket-flow 0.15.0).
+> Up to date as of 2026-11-15 (ticket-flow 0.16.0).
 
 `setup-project` writes this section; you can also edit it by hand. Its first
-line under the heading is a template marker, `<!-- ticket-flow workflow: 6 -->`:
+line under the heading is a template marker, `<!-- ticket-flow workflow: 7 -->`:
 the update band offers to run `setup-project` when a project's marker is
 missing or lower than the plugin's (see
 [skills.md](skills.md#update-band)). The number only moves when the template
@@ -24,7 +24,7 @@ language. Fields that do not apply are left out, never left as placeholders.
 | Worktree and branch convention | deliver-ticket, run-epic (agent prompt) | `../<repo>-<N>`, branch from the ticket |
 | Verify commands, in order | deliver-ticket, run-epic, write-ticket ("done when") | inferred from `package.json` / `pyproject.toml` |
 | Browser check rule | deliver-ticket, run-epic | Chrome, then Playwright, else NOT DONE |
-| Review rule | deliver-ticket, run-epic | `security-reviewer` when `sécurité` or a sensitive area, none on docs only; HIGH/MEDIUM in scope block |
+| Review rule | deliver-ticket, run-epic | one `reviewer` run: security mode when `sécurité` or a sensitive area, challenge mode on a `challenger` ticket, none on docs only; HIGH/MEDIUM in scope block |
 | Merge flow (PR to main / PR to `dev` then release / local `--no-ff`) | deliver-ticket, run-epic | what git history suggests |
 | Max parallel agents | run-epic | 3 |
 | Exclusive resources (never two at once) | deliver-ticket, run-epic | none |
@@ -52,7 +52,7 @@ language. Fields that do not apply are left out, never left as placeholders.
   `move-card` uses GraphQL. On a rate-limit error: read `gh api rate_limit`,
   wait for the reset, do not loop.
 - Tickets are written with the `write-ticket` skill.
-- Mandatory labels: a type, `model:fable|opus|sonnet`, `effort:medium|high`
+- Mandatory labels: a type, `model:opus|sonnet`, `effort:medium|high`
   (nothing else), `taille:S|M` (no L: split).
 - An epic carries the `epic` label; its children are sub-issues; blockers are
   "blocked by" links, not prose.
@@ -71,13 +71,12 @@ This block exists only when the project chose mise and/or Doppler.
 - Verify: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`.
 - Browser (UI): Chrome first; Playwright if Chrome is closed or fails 2-3
   times; otherwise write "browser test NOT DONE" and why.
-- Review: `security-reviewer` before the merge when the ticket carries
+- Review: the `reviewer` agent (one run, security mode) before the merge when the ticket carries
   `sécurité` or the diff touches a sensitive area (auth, user data, untrusted
   input, secrets, SQL, shell, HTML rendering, dependencies, CI and deploy);
   a docs, comments, tests or styles only diff gets no review; HIGH/MEDIUM block;
-  out-of-scope findings become `sécurité` tickets. A `challenger` ticket also
-  goes through the `challenger` agent (in parallel, same commit); its
-  BLOCKING blocks the merge.
+  out-of-scope findings become `sécurité` tickets. A `challenger` ticket adds
+  the challenge mode to the same run; its BLOCKING blocks the merge.
   Only a BLOCKING or MEDIUM-or-higher finding triggers a fix round (two rounds
   at most); LOW findings and réserves go to the merge comment.
 - Merge: PR to `main`, merge commit, after green CI.
@@ -91,7 +90,7 @@ This block exists only when the project chose mise and/or Doppler.
 - A change I ask for, one or two lines, with no new behaviour and no
   sensitive area (auth, user data, secrets, SQL, shell, HTML rendering), skips
   the ticket: the session does it itself, orchestrator included (short
-  branch, verify, commit saying why, usual merge). No `security-reviewer`
+  branch, verify, commit saying why, usual merge). No review
   outside sensitive areas.
 - Anything larger (several files, a behaviour change, a doubt) → a ticket.
 
@@ -113,7 +112,7 @@ This block exists only when the project chose mise and/or Doppler.
 ### Tickets
 - Tracking: Linear, team `ABC`, project "Mobile".
 - Labels: a type (`Bug`, `Feature`, `Improvement`), a model (group
-  `Modèle IA`: `Fable` / `Opus` / `Sonnet`), an effort (group `Effort`:
+  `Modèle IA`: `Opus` / `Sonnet`), an effort (group `Effort`:
   `Medium` / `High`), a size (group `Taille`: `S` / `M`).
 - An epic is a parent issue (children carry `parentId`) or a Linear project.
 - Statuses: Todo → In Progress → Testing → Done; Blocked when stuck.

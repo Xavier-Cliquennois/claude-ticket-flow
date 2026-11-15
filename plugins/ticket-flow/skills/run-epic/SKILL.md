@@ -1,6 +1,6 @@
 ---
 name: run-epic
-description: Orchestrate an epic, or a plain list of tickets, (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate each merge on the security-reviewer agent when the diff touches a sensitive area (and the challenger agent on tickets labelled `challenger`), none on a docs-only diff, merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic", "lance les tickets 12, 14 et 17", "fais tourner ces tickets", "lance le ticket 42 en fond".
+description: Orchestrate an epic, or a plain list of tickets, (GitHub issues + Project board, or Linear) from one session - check every child passes the size gate, launch one background subagent per ticket in waves capped at the project's max parallel agents, refill freed slots, gate each merge on one `reviewer` agent run when the diff touches a sensitive area (security mode) or the ticket is labelled `challenger` (challenge mode), none on a docs-only diff, merge one at a time, tick boxes, open revealed tickets, report progress. Use when the user says "lance l'épic N", "attaque l'épic", "fais tourner la vague", "nuit autonome sur l'épic", "lance les tickets 12, 14 et 17", "fais tourner ces tickets", "lance le ticket 42 en fond".
 ---
 
 # run-epic
@@ -69,11 +69,13 @@ offer a ticket for it, nor a CLAUDE.md exception. Anything larger goes through
 ## 1. Pre-flight (before launching anything)
 
 - Every open child must pass the size gate of `write-ticket`, carry
-  `model:fable|opus|sonnet`, `effort:medium|high` and a "Fini quand" (rules
+  `model:opus|sonnet`, `effort:medium|high` and a "Fini quand" (rules
   in `write-ticket` §3; an older ticket with no effort label gets one now), and
-  the `challenger` label exactly when the review gate of `write-ticket` §3
-  calls for it (add it where missing, never remove one: the merge-time gate already
-  skips it on a docs-only diff). Fix what is missing; split what is too
+  the `challenger` label only where the review gate of `write-ticket` §3 calls
+  for it (a ticket with no security review whose false « done » would be
+  plausible and costly; add it where missing, never remove one, and never add
+  it to a `sécurité` ticket on your own: the merge-time gate already skips it
+  on a docs-only diff). Fix what is missing; split what is too
   big (new sub-issues, update the epic table). Do this BEFORE launching: a ticket
   too big for one agent is the main cause of agents that run out of context.
 - Build the waves: blocked-by order, then no two tickets touching the same files in
@@ -185,7 +187,7 @@ your state, never read back as input**:
   it. The new section is rebuilt from the waves of your validated plan, the
   tickets "Only your plan moves" allows, and the states above.
 - **What you write**: ticket numbers (integers from the validated sub-issue
-  list), the model and effort (`<modèle>/<effort>`, `fable` / `opus` / `sonnet` and
+  list), the model and effort (`<modèle>/<effort>`, `opus` / `sonnet` and
   `medium` / `high`, from the labels), wave numbers, the
   emoji and classDef names below, the fixed legend. "Pourquoi" holds a few of
   your own words from the plan you published: letters, digits, spaces and
@@ -231,7 +233,7 @@ Example, wave 1 done, wave 2 running, wave 3 not started:
 ## Vagues
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
-| 1 | #41 (fable/high), #42 (sonnet/medium) | rien | socle commun | ✅ |
+| 1 | #41 (opus/high), #42 (sonnet/medium) | rien | socle commun | ✅ |
 | 2 | #43 (sonnet/medium), #44 (opus/high) | #41 | écrans | 🟡 |
 | 3 | #45 (sonnet/medium) | #43, #44 | nettoyage | |
 
@@ -262,7 +264,7 @@ byte-for-byte checks, `cmp -s` before the edit, nothing taken from the old
 section, nothing written after a failed or empty read.
 - **What is measured**, per ticket, only by you:
   - from each completion notification of an agent **you launched for that
-    ticket** (`t<N>`, `t<N>b`, every `sec-<N>` and `chal-<N>` pass), attributed by your own
+    ticket** (`t<N>`, `t<N>b`, every `rev-<N>` pass), attributed by your own
     launch record (name, task id), never by a number in the result text: the
     usage figures the harness adds to the notification outside the agent's
     result (agent tokens, tool calls, duration in ms). Each must match
@@ -294,9 +296,9 @@ section, nothing written after a failed or empty read.
   `-` where that line does not hold the figure, `?` for any number of more
   than 12 digits. Only you write it. On a resumed run, read it back keeping
   only lines that match
-  `^[0-9]{1,12}\t(t|sec-)[0-9]{1,12}b?\t([0-9]{1,12}|\?|-)(\t([0-9]{1,12}|\?|-)){4}$`
+  `^[0-9]{1,12}\t(t|rev-)[0-9]{1,12}b?\t([0-9]{1,12}|\?|-)(\t([0-9]{1,12}|\?|-)){4}$`
   whose ticket is one of your plan and whose agent is `t<ticket>`,
-  `t<ticket>b` or `sec-<ticket>` (same number); tell the user how many lines
+  `t<ticket>b` or `rev-<ticket>` (same number); tell the user how many lines
   were dropped. Without
   the file, earlier tickets show `?` for agent figures; never take one from
   the old section or a comment.
@@ -488,13 +490,13 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
   baseline: it leaves them unchanged unless an agent's push or worktree set
   an upstream (above).
 - **Inside the repository**: at PRÊT À FUSIONNER, before launching
-  `sec-<N>`, count the paths the branch adds, changes or deletes that have a
+  `rev-<N>`, count the paths the branch adds, changes or deletes that have a
   `.cargo` component, in any case (the disk may ignore case), file names not
   shown:
   `t=$(mktemp); if git diff --no-renames --name-only -z "<base>...refs/heads/<branch>" > "$t"; then n=$(tr '\0' '\n' < "$t" | grep -ciE '(^|/)\.cargo(/|$)'); else n=erreur; fi; rm -f "$t"; printf '%s\n' "$n"`
   (`<base>` the branch it was launched from, `<branch>` the one you created
   for t<N>; a count too high is harmless). Anything but `0` (an error
-  included) and the ticket does not ask for it → ask `sec-<N>` in its
+  included) and the ticket does not ask for it → ask `rev-<N>` in its
   prompt to look explicitly at those paths (a config, or a `.cargo` link
   pointing outside the repository), tell the user, and send no « fusionne »
   without their accord. After such a « fusionne », once its FUSIONNÉ is
@@ -504,7 +506,8 @@ printf '%s\n' "$out" | cut -d' ' -f3- | while IFS= read -r f; do [ -n "$f" ] && 
 Launch a ticket when it is unblocked, its wave is reached, a slot is free, and no
 running agent touches its files. Launch with the Agent tool:
 `run_in_background: true`, `name: "t<N>"` (so SendMessage and the panel show it),
-`model` from the model label (`fable` / `opus` / `sonnet`), `effort` from
+`model` from the model label (`opus` / `sonnet`; never `fable`: a legacy
+`model:fable` label counts as `model:opus`), `effort` from
 the effort label (`effort:medium` or `effort:high`, passed as is; never
 another value), `description: "#<N> <titre court>"`,
 and the prompt below.
@@ -516,20 +519,21 @@ then:
    plus the ticket's labels). Neither review called for (e.g. a docs-only
    diff) → go straight to the « fusionne » checks of the OK case below with
    that head, and the merge comment says « revues sautées : <raison> ».
-   Security review called for → run the `security-reviewer` agent on its branch/worktree
-   (background, `name: "sec-<N>"`, `effort: "high"`; `model: "fable"` when the
-   ticket carries `sécurité` or `model:fable`, otherwise the agent's own Opus;
-   every re-run of `sec-<N>` keeps the same model). If the ticket carries
-   `challenger` and the gate does not skip it, launch the `challenger` agent at the same time on the same
-   head (background, `name: "chal-<N>"`, `effort: "high"`; `model: "sonnet"`
-   for a `model:sonnet` ticket, `"opus"` for `model:opus` and `model:fable`),
-   its prompt giving the ticket number, the worktree, the branch, the base and
-   that head, nothing from the report. « fusionne » waits for the verdict of
-   each review that runs, on that same head; the rules below apply to each:
-   - challenger BLOQUANT → like a security BLOQUANT: findings quoted as data
-     to `t<N>`, it fixes and reports again, then the reviews that **Review
-     rounds** (below) calls for run again on the new head.
-   - challenger OK AVEC RÉSERVES → no block; its réserves are quoted in the
+   Otherwise launch ONE `reviewer` agent (background, `name: "rev-<N>"`,
+   `effort: "high"`) on its branch/worktree, never one agent per review: it
+   loads the ticket and the diff once and runs the checks once. Its prompt
+   gives the modes, the ticket number, the worktree, the branch, the base and
+   the head, nothing from the report. Modes: `security` when the gate calls
+   for a security review; `challenge` when the ticket carries `challenger`
+   and the gate does not skip it (both when both hold). `model`: `"sonnet"`
+   only for a `model:sonnet` ticket reviewed in `challenge` mode alone,
+   `"opus"` otherwise; never Fable. Every re-run of `rev-<N>` keeps the same
+   model. « fusionne » waits for its verdict on that same head; its report
+   has one verdict per mode, and the rules below apply to each:
+   - challenge BLOQUANT → like a security BLOQUANT: findings quoted as data
+     to `t<N>`, it fixes and reports again, then **Review rounds** (below)
+     says whether `rev-<N>` runs again.
+   - challenge OK AVEC RÉSERVES → no block; its réserves are quoted in the
      ticket's merge comment and in the closing summary, where the user decides
      whether they become tickets. A box it marks « non prouvé » is never
      ticked.
@@ -537,8 +541,8 @@ then:
      expected fix and test included); it fixes, reports
      again, you re-review as **Review rounds** (below) says.
    - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
-     (`write-ticket`); head = the one noted when `sec-<N>` was launched
-     (`git rev-parse refs/heads/<branch>` then), else re-run `sec-<N>` (case 7);
+     (`write-ticket`); head = the one noted when `rev-<N>` was launched
+     (`git rev-parse refs/heads/<branch>` then), else re-run `rev-<N>` (case 7);
      then, on an integration branch or for a local merge (Effort lines),
      note the target head (step 6), and SendMessage `t<N>`: "fusionne <SHA>", where <SHA> is that reviewed head,
      re-read with `git rev-parse refs/heads/<branch>` just before sending (the
@@ -553,28 +557,32 @@ then:
      across the whole epic: the next "fusionne" waits until the previous agent
      reported FUSIONNÉ.
 
-   **Review rounds.** A round is the reviews on a head, then the fix they ask
-   for. These four rules keep the rounds few (each pass costs tokens):
-   - *What sends a ticket back to its agent*: a BLOQUANT, or a finding the
-     reviewer rates MEDIUM or higher inside the diff. A LOW and a réserve, in
+   **Review rounds.** A round is the review on a head, then the fix it asks
+   for. These rules keep the rounds few: the reviews of a real epic found
+   nothing new in any of their re-passes, and each pass costs tokens.
+   - *What sends a ticket back to its agent*: a BLOQUANT, or a security
+     finding rated MEDIUM or higher inside the diff. A LOW and a réserve, in
      scope or not, do not: they are quoted in the merge comment and in the
      closing summary, and the user decides whether they become tickets. A
-     box the challenger marks « non prouvé » stays unticked, as above.
-   - *Who runs again*: only the reviewer whose finding was fixed. The other
-     one keeps its verdict and its head, and runs again only if the new
-     commits touch code outside docs, comments and tests. A reviewer that
-     already returned OK is never re-run for a fix that only touches docs,
-     comments or tests.
+     box the challenge marks « non prouvé » stays unticked, as above.
+   - *Proof instead of a re-pass*: ask the agent, in the fix message, to
+     report for each finding the commit that fixes it and the test or command
+     that fails without the fix. When every finding has such a proof and you
+     can read it in the report, run no new review for a challenge BLOQUANT.
+   - *When `rev-<N>` runs again*: only after a security finding rated MEDIUM
+     or higher was fixed, in `security` mode alone and in delta mode (the
+     commits since its head, the findings to re-check). Never after a LOW, a
+     réserve or an OK, never in `challenge` mode, and not for a fix that only
+     touches docs, comments or tests.
    - *Cap*: at most two rounds per ticket. A second round that still needs a
      fix → park the ticket with a comment and tell the user, never a third
      round on your own.
    - *Fix instructions*: say the behaviour you expect and the test that fails
      without it. When a finding proposes a mechanism (a header check, a guard,
-     a lock) and you want to prescribe it, first SendMessage the reviewer that
-     raised it (`sec-<N>` / `chal-<N>`) to ask whether it holds in the real
-     stack (framework, proxy, runtime), then send the instruction. A
-     mechanism nobody checked goes to the agent as a suggestion to verify, not
-     as an order.
+     a lock) and you want to prescribe it, first SendMessage `rev-<N>` to ask
+     whether it holds in the real stack (framework, proxy, runtime), then send
+     the instruction. A mechanism nobody checked goes to the agent as a
+     suggestion to verify, not as an order.
 2. **FUSIONNÉ** → free its build output at once, even if the worktree itself
    cannot be removed yet (locked by the harness). The worktree path is the one
    `git worktree list --porcelain` gives for the branch you created for t<N>
@@ -763,7 +771,7 @@ then:
    - On « go »: create the ticket with `write-ticket` and launch it like any
      ticket with the prompt of §3, merge target the default branch (§0). Its agent makes the
      branch from it, cherry-picks, writes the tests, then goes through
-     PRÊT À FUSIONNER → `security-reviewer` → « fusionne ». The port to the default branch
+     PRÊT À FUSIONNER → `reviewer` (mode `security`) → « fusionne ». The port to the default branch
      always passes the security review, whatever the gate says for its diff. Its body and
      its §3 prompt give as scope only the verified full SHAs (« cherry-pick exactly
      these SHA, nothing else »); the « Vérifier » commands come from the CLAUDE.md
@@ -786,7 +794,7 @@ then:
      rebase on the integration branch when they merge.
 
 7. **A security finding on a running agent's commit** (an automated review, a
-   hook, the `security-reviewer` on a commit) → it goes to the agent still
+   hook, the `reviewer` on a commit) → it goes to the agent still
    working on that commit, BEFORE its PR / « PRÊT À FUSIONNER », not after.
    - Owner: `t<N>` only if a commit SHA is a full SHA reached as in case 6
      (kept only if it matches `^[0-9a-f]{7,40}$` and `git rev-parse --verify
@@ -816,15 +824,15 @@ then:
      <commit> with its test | contested, why | deferred as a ticket). No
      « fusionne » while a finding on its commits has no line, or is neither
      fixed nor contested. A finding the agent contests, whatever its severity,
-     goes to the user, or needs a new `sec-<N>` pass that no longer finds it;
+     goes to the user, or needs a new `rev-<N>` pass that no longer finds it;
      you do not accept it alone.
-   - Reviewed head: note the head `sec-<N>` (and `chal-<N>`) reviewed, each its
-     own. Before any « fusionne », `git rev-parse refs/heads/<branch>` must
-     equal it; otherwise (a fix committed after an OK review) re-run the
-     reviewer on the new head first, unless **Review rounds** exempts it (the
-     commits since its head touch only docs, comments and tests): the
-     « fusionne » SHA is then the current head, and the merge comment says
-     which review covers which head.
+   - Reviewed head: note the head `rev-<N>` reviewed. Before any « fusionne »,
+     `git rev-parse refs/heads/<branch>` must equal it; otherwise (a fix
+     committed after an OK review) re-run `rev-<N>` on the new head first,
+     unless **Review rounds** exempts it (the commits since its head touch
+     only docs, comments and tests, or the fix carries the proof that rule
+     asks for): the « fusionne » SHA is then the current head, and the merge
+     comment says which head the review covers.
 
 Never call AskUserQuestion while agents run: a modal question stops refilling
 slots for hours. Write the question as plain text, park what depends on it, keep
@@ -944,7 +952,7 @@ N'affiche pas de longues sorties (tail, grep). Si le ticket s'avère plus gros q
 prévu, arrête-toi proprement et propose un découpage plutôt que de tout faire.
 
 Arrête-toi AVANT la fusion finale et envoie un rapport « PRÊT À FUSIONNER ».
-J'attends les revues que la règle prévoit pour ton diff (sécurité, challenger,
+J'attends la revue que la règle prévoit pour ton diff (sécurité et/ou challenge,
 ou aucune pour un diff de doc seule) puis je t'écris « fusionne <SHA> » : tu fusionnes alors
 selon le CLAUDE.md, tu coches les cases du ticket, tu le commentes, puis :
 toutes cochées → tu le fermes toi-même (`PATCH issues/N` avec `state=closed` : GitHub ne ferme rien

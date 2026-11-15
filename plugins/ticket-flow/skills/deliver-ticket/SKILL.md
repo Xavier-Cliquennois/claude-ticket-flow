@@ -1,6 +1,6 @@
 ---
 name: deliver-ticket
-description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on the security-reviewer agent when the diff touches a sensitive area (and the challenger agent for a `challenger` ticket), skipping both on a docs-only diff, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
+description: Deliver one ticket (GitHub issue or Linear) end to end - read it with its comments, check it passes the size gate, open the worktree, build only its scope, verify, update docs in the same commit, gate the merge on one `reviewer` agent run when the diff touches a sensitive area (security mode) or the ticket is labelled `challenger` (challenge mode), skipping both on a docs-only diff, merge as the project's CLAUDE.md says, tick the "Fini quand" boxes with proof, move the board, open revealed tickets. Runs in the current session, or as the procedure a run-epic ticket agent follows (agent mode, stops before merge). Use when the user says "fais le ticket 42", "livre le ticket", "attaque l'issue #42", "traite ABC-12", "corrige le bug du ticket N", or reports a human check done on a ticket in « à valider » ("j'ai testé #380, c'est bon").
 ---
 
 # deliver-ticket
@@ -212,40 +212,46 @@ shows it live:
 - Commit per the CLAUDE.md (message language, Conventional Commits, ticket
   reference such as `#N` / `ABC-N`). Small commits are fine; no unrelated files.
 
-## 6. Security review and challenger
+## 6. Review (security and challenge, one agent)
 
 - Agent mode: stop here. Send the report (step 9) with ÉTAT « PRÊT À
   FUSIONNER » and wait. On findings, fix them and report again. On
   « fusionne », go to step 7.
 - Direct mode: first apply the review gate of `write-ticket` §3 to the real
   diff (`git diff --name-only <base>...<head>`, plus the ticket's labels): it
-  says whether `security-reviewer` runs, whether `challenger` runs, or
+  says whether the `security` mode runs, whether the `challenge` mode runs, or
   neither (say which and why in the step 7 report and the merge comment).
-- Direct mode, security review called for: run the `security-reviewer` agent
-  on the branch/worktree.
-  - BLOQUANT, or a finding rated MEDIUM or higher inside the diff → fix in
-    scope, re-run (see the round rules below).
+- Direct mode, a review called for: run ONE `reviewer` agent on the
+  branch/worktree (`effort: "high"`), never one agent per review: it loads the
+  ticket and the diff once and runs the checks once. Give it the modes
+  (`security` when the gate calls for it, `challenge` for a `challenger` ticket
+  the gate does not skip), the ticket, the branch, the base and the head.
+  `model: "sonnet"` only for a `model:sonnet` ticket reviewed in `challenge`
+  mode alone, `"opus"` otherwise, never Fable.
+  - security BLOQUANT, or a finding rated MEDIUM or higher inside the diff →
+    fix in scope (see the round rules below).
+  - challenge BLOQUANT → fix in scope. OK AVEC RÉSERVES → show the réserves to
+    the user with the step 7 report. A box it marks « non prouvé » is not
+    ticked.
   - OK / OK AVEC RÉSERVES → out-of-scope findings become `sécurité` tickets
     (`write-ticket`). A LOW or a réserve is not fixed before the merge: show
     it with the step 7 report, the user decides whether it becomes a ticket.
-- Direct mode, ticket labelled `challenger` and not skipped by the gate: run
-  the `challenger` agent, in parallel with the security review when both run,
-  on the same head (`effort: "high"`, `model: "sonnet"` for a
-  `model:sonnet` ticket, `"opus"` otherwise). BLOQUANT → fix, then re-run
-  per the round rules below.
-  OK AVEC RÉSERVES → show the réserves to the user with the step 7 report.
-  A box it marks « non prouvé » is not ticked.
-- Round rules (each review pass costs tokens):
-  - Re-run only the reviewer whose finding was fixed. The other keeps its
-    verdict and head, and runs again only if the new commits touch code
-    outside docs, comments and tests. A reviewer already OK is never re-run
-    for a fix that only touches docs, comments or tests.
+- Round rules (each review pass costs tokens, and in a real epic no re-pass
+  ever found anything new):
+  - Once the fix is made, for each finding keep the commit that fixes it and
+    the test or command that fails without the fix. With that proof for every
+    finding, a challenge BLOQUANT needs no new review.
+  - Run the reviewer again only after a security finding rated MEDIUM or
+    higher was fixed, in `security` mode alone and in delta mode (commits since
+    its head, findings to re-check). Never after a LOW, a réserve or an OK,
+    never in `challenge` mode, and not for a fix that only touches docs,
+    comments or tests.
   - At most two rounds. A second round that still needs a fix → stop, comment
     the ticket, tell the user.
   - Fix from a finding that proposes a mechanism (a header check, a guard):
-    before applying it, ask the reviewer that raised it (`SendMessage`) whether
-    it holds in the real stack, or verify it yourself in the code. A mechanism
-    nobody checked is a suggestion, not a fix.
+    before applying it, ask the reviewer (`SendMessage`) whether it holds in
+    the real stack, or verify it yourself in the code. A mechanism nobody
+    checked is a suggestion, not a fix.
 
 ## 7. Merge
 

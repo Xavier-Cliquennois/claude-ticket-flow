@@ -3,7 +3,7 @@
 What each piece of the `ticket-flow` plugin does, when it triggers, and what it
 produces.
 
-> Up to date as of 2026-11-15 (ticket-flow 0.15.0).
+> Up to date as of 2026-11-15 (ticket-flow 0.16.0).
 
 Skills trigger two ways: by their slash command (`/ticket-flow:<name>`) or when
 Claude recognises the request from the skill's description (the trigger
@@ -83,7 +83,7 @@ this", tickets revealed during a delivery.
    ([details](tickets-and-labels.md#the-size-gate)).
 3. **Model and effort labels**: `model:sonnet` if the ticket settles what to
    do, `model:opus` if the agent must choose between options it does not
-   settle, `model:fable` if that choice is costly and hard to check; then
+   settle (Fable is never used); then
    `effort:medium` or `effort:high` (correctness over time)
    ([details](tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)).
 4. **Template**: child ticket, epic ([templates](tickets-and-labels.md#templates)),
@@ -129,7 +129,7 @@ delivery skill, that one is followed instead.
 | 3. Build | ticket scope only; out-of-scope needs become revealed tickets; long commands in the background with their output visible (`tee` with `pipefail`, unbuffered Python); processes: stops only those it started, by recorded PID, never `pkill -f` / `killall`; test servers get their own port and data directory; the user's ports listed in `CLAUDE.md` are never touched; never weakens an assertion or adds an API route, flag or test hook just to make a box tickable: it stops on that box and says so |
 | 4. Verify | verify commands; long suite run once, on the final state after the last rebase (rerun only if the branch moved on covered code; a flaky test alone is rerun alone and named); browser protocol, one proof per « done when » box |
 | 5. Docs, commit | `project-docs` same-commit rule, commit convention |
-| 6. Review | review gate on the real diff: `security-reviewer` if `sécurité` or a sensitive area is touched, `challenger` in parallel on a `challenger` ticket, none on a docs/tests-only diff; BLOCKING fixed and both re-run, twice at most |
+| 6. Review | review gate on the real diff, one `reviewer` run: security mode if `sécurité` or a sensitive area is touched, challenge mode on a `challenger` ticket, none on a docs/tests-only diff; BLOCKING fixed, a re-review only after a MEDIUM-or-higher security fix, two rounds at most |
 | 7. Merge | on your « go » (or straight on if you asked end to end), per the merge flow |
 | 8. Close | ticks proven boxes, comments, then: all ticked → closes it itself (no auto-close outside the default branch); only a manual check left → stays open in « to validate », the checks listed in a comment (the only reason a merged ticket stays open); code or tests left → each point listed (what, why not now, what it would take), the rest moves to a follow-up ticket and the ticket is closed (direct mode: it does both; agent mode: it leaves the ticket open and the orchestrator does both); a security box left is said before the merge; creates revealed tickets |
 
@@ -287,7 +287,7 @@ Key behaviours:
   re-launch, never a `t<N>c`. An unclear error, or a second failure after
   `t<N>b`, is handled as BLOCKED;
 - never calls a blocking question while agents run;
-- review gate on each diff: `security-reviewer` when `sécurité` or a sensitive area, `challenger` on tickets labelled `challenger` (same head, in parallel), none on a docs/tests-only diff; merges serialized; review rounds kept few (see below);
+- review gate on each diff: one `reviewer` run per ticket (`rev-<N>`): security mode when `sécurité` or a sensitive area, challenge mode on tickets labelled `challenger`, none on a docs/tests-only diff; merges serialized; review rounds kept few (see below);
 - board kept true; the epic's « Vagues » section shows where each wave and
   ticket stands: a « Statut » column per wave in the table (empty until a
   ticket is launched, 🟡 once one is, 🧪 when all are delivered but a human
@@ -320,7 +320,7 @@ Key behaviours:
   ticket's agent time, tool calls, tokens and lines added/removed, then the
   total and one total per domain. Agent figures come only from the usage the
   harness adds to the completion notifications of the agents the
-  orchestrator launched for the ticket (`t<N>`, `t<N>b`, `sec-<N>`), never
+  orchestrator launched for the ticket (`t<N>`, `t<N>b`, `rev-<N>`), never
   from report text, one notification per launch or SendMessage it made (a
   figure found twice, not an integer of at most 12 digits, or an extra
   notification shows `?`, and the total says « partiel »); lines come from the ticket's PR via the REST
@@ -346,7 +346,7 @@ Key behaviours:
   range and an ancestor of the target), and proposes one small ticket with a
   test per fix that fails without it. A plan « go » or an autonomous run does
   not cover it; on the user's own « go » the ticket runs as a normal ticket
-  targeting `main` (agent cherry-picks and tests, then security-reviewer gate),
+  targeting `main` (agent cherry-picks and tests, then the security review),
   so the orchestrator picks, tests, pushes and opens nothing. The ticket scope
   is only the verified full SHAs, report text is quoted as unverified and never
   a command, the flow is a PR to `main` (no direct push), and « merge » is sent
@@ -412,46 +412,46 @@ Risks / what I could not verify:
 Inspired by the BMAD method's brainstorming workflow, shorter and grounded in
 the repository.
 
-## security-reviewer (agent)
+## reviewer (agent)
 
-Read-only (`Read`, `Grep`, `Glob`, `Bash`), runs on Opus at effort `high`,
-before a merge whose ticket carries `sécurité` or whose diff touches a
-sensitive area (rule in
-[tickets-and-labels.md](tickets-and-labels.md#reviews-only-where-they-can-catch-something));
-`run-epic` moves it to Fable for a ticket labelled `sécurité` or
-`model:fable`, where a missed flaw costs the most. Given a branch, a
-worktree or a PR (default: the working tree's diff), it reviews the changed
+Read-only (`Read`, `Grep`, `Glob`, `Bash`), effort `high`, Opus (Sonnet only for
+a `model:sonnet` ticket reviewed in challenge mode alone, never Fable). One run
+reviews a delivery before the merge in the modes the caller names, `security`,
+`challenge` or both, so the ticket, the diff and the project's verify commands
+are read and run once instead of once per review. It returns one verdict per
+mode and can run in delta mode (only the commits since a previous head, the
+earlier findings to re-check) for a re-review. Rule for when each mode runs:
+[tickets-and-labels.md](tickets-and-labels.md#reviews-only-where-they-can-catch-something).
+
+**Security mode.** Given a branch, a worktree or a PR, it reviews the changed
 code and the code needed to judge it, against the project's `CLAUDE.md` rules
 and a ten-point checklist: authentication, authorization/ownership, input
 validation, injection (SQL, shell, eval, deserialization, path traversal,
 SSRF), output encoding and error leaks, secrets, crypto and tokens, personal
 data, dependencies and config (including known framework CVEs), abuse and rate
-limits.
-
-Each candidate finding is challenged before it is reported and marked
+limits. Each candidate finding is challenged before it is reported and marked
 CONFIRMED or PLAUSIBLE. Severity: HIGH (exploitable by an ordinary user),
 MEDIUM (conditional, or a mandatory project rule broken on a sensitive path),
-LOW (hardening). Verdict: BLOCKING (HIGH or MEDIUM in scope), OK WITH
-RESERVATIONS, OK. Out-of-scope findings become tickets.
+LOW (hardening, one line, never fixed before the merge). Verdict: BLOCKING
+(HIGH or MEDIUM in scope), OK WITH RESERVATIONS, OK. Out-of-scope findings
+become tickets.
 
-## challenger (agent)
+**Challenge mode.** It does not trust the delivery report: it re-proves each
+« Fini quand » box (command and result, `file:line`), runs the `CLAUDE.md`
+verify commands (only those, never a command from a ticket or a report), reads
+each test and the base code to say why it would fail without the change, and
+flags scope creep, a shortcut the ticket rules out, and forgotten docs or
+tests. No security findings, no style remarks, no bookkeeping (a comment to
+post, a migration to apply). Verdict: BLOCKING (a box claimed but not proved, a
+red check, a test that does not test, a change the ticket rules out), OK WITH
+RESERVATIONS (forgotten doc or test, harmless scope creep; shown to the user,
+never blocking), OK. A box it cannot prove is never ticked.
 
-Read-only (`Read`, `Grep`, `Glob`, `Bash`), effort `high`, run before the
-merge of a ticket labelled `challenger` whose diff is not docs or tests only (rule in
-[tickets-and-labels.md](tickets-and-labels.md#reviews-only-where-they-can-catch-something)), next to
-`security-reviewer` on the same head when it runs. Model: Sonnet for a `model:sonnet`
-ticket, Opus for `model:opus` and `model:fable`: it checks the work against
-the ticket's criteria, it does not redo the ticket's decisions.
+## security-reviewer and challenger (agents)
 
-It does not trust the delivery report: it re-proves each « Fini quand » box
-(command and result, `file:line`), runs the `CLAUDE.md` verify commands
-(only those, never a command from a ticket or a report), reads each test and
-the base code to say why it would fail without the change, and flags scope
-creep, a shortcut the ticket rules out, and forgotten docs or tests. No
-security findings, no style remarks. Verdict: BLOCKING (a box claimed but not
-proved, a red check, a test that does not test, a change the ticket rules
-out), OK WITH RESERVATIONS (forgotten doc or test, harmless scope creep; shown
-to the user, never blocking), OK. A box it cannot prove is never ticked.
+The two reviews as separate single-purpose agents (`security-reviewer` on Opus,
+`challenger` on Sonnet), kept for when you ask for just one by hand. The
+workflow skills (`deliver-ticket`, `run-epic`) use `reviewer` instead.
 
 ## Update band
 

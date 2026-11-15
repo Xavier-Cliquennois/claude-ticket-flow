@@ -3,7 +3,7 @@
 The ticket and epic templates, the standard labels, and how `write-ticket`
 decides a ticket is too big and splits it.
 
-> Up to date as of 2026-11-15 (ticket-flow 0.15.0).
+> Up to date as of 2026-11-15 (ticket-flow 0.16.0).
 
 ## The size gate
 
@@ -43,12 +43,11 @@ labels are never renamed or recolored.
 
 | Label | Meaning |
 |---|---|
-| `model:fable` | A choice the ticket does not settle where a mistake would be costly and hard to see: security-sensitive design, intermittent or concurrency bug, real-data migration, foundation of an epic, a ticket an opus agent already failed. Claude Fable 5.2, about twice Opus's price |
 | `model:opus` | Ambiguous architecture or product decision, investigation, a scope the agent must decide itself |
 | `model:sonnet` | The ticket says what to do and how to verify it |
 | `effort:medium` | The agent runs at effort `medium`: most tickets |
-| `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`); the usual effort for `model:fable` |
-| `challenger` | Before the merge, the `challenger` agent re-proves the "done when" boxes instead of trusting the delivery report. Only when a false "done" is plausible and costly: a box proved by a judgment, `model:fable`, `model:opus` changing code behaviour, code on a `sécurité` ticket, data migration, concurrency, public API. Never on docs, tests only, config values, renames, or a `taille:S` ticket whose boxes are all commands |
+| `effort:high` | Correctness over time: `sécurité`, data migration, concurrency, public API, critical path, a bug already missed once (the agent runs at `high`) |
+| `challenger` | Before the merge, the challenge mode of the `reviewer` agent re-proves the "done when" boxes instead of trusting the delivery report. Only on a ticket with no security review where a false "done" is plausible and costly: a box proved by a judgment, `model:opus` changing code behaviour, data migration, concurrency, public API. A `sécurité` ticket gets it only on request. Never on docs, tests only, config values, renames, or a `taille:S` ticket whose boxes are all commands |
 | `epic` | Parent of a wave of sub-issues (optional in Linear) |
 | `taille:S` | Under half a human day, 1-3 files |
 | `taille:M` | One human day at most, one responsibility |
@@ -57,7 +56,7 @@ labels are never renamed or recolored.
 Plus a type label (`bug`, `feature`, …; GitHub's defaults are reused) and any
 project-specific taxonomy you already have, which is kept and documented.
 Every ticket has exactly one model label and one effort label. In Linear,
-the same labels live in a "Modèle IA" group (Fable / Opus / Sonnet), an
+the same labels live in a "Modèle IA" group (Opus / Sonnet), an
 "Effort" group (Medium / High) and a "Taille" group. The next section says
 how to choose them.
 
@@ -67,40 +66,39 @@ how to choose them.
 checks them in its pre-flight and adds what is missing. Each agent then runs
 exactly on what its ticket says.
 
-### Model: two questions, in order
+### Model: one question
 
 ```mermaid
 flowchart TD
   Q1{"Does the agent have to choose between<br/>options the ticket does not settle?"}
   Q1 -->|no| S["model:sonnet"]
-  Q1 -->|yes| Q2{"Would a wrong choice be costly<br/>and hard to see in the done-when checks?"}
-  Q2 -->|no| O["model:opus"]
-  Q2 -->|yes| F["model:fable"]
+  Q1 -->|yes| O["model:opus"]
 ```
 
 | Model | For | Examples |
 |---|---|---|
 | `model:sonnet` (Claude Sonnet 5.5) | The ticket says what to do and how to verify it | A well-located fix, a rename across an area, a11y/i18n/style fixes checked in the DOM |
 | `model:opus` (Claude Opus 5.5) | The agent decides something the ticket leaves open | An architecture or product choice, an investigation, a scope to settle |
-| `model:fable` (Claude Fable 5.2) | Same, and a mistake would be expensive and hard to catch | Security-sensitive design, an intermittent or concurrency bug, a migration of real data, the foundation other tickets of the epic build on, a ticket an opus agent already failed |
 
-Fable is the most capable model and costs about twice Opus: it is kept for
-the last row.
+Fable is never used by the workflow, for the delivery agents as for the
+reviews. A costly or hard-to-check choice stays `model:opus`, with
+`effort:high`, and a `challenger` where a false « done » would be plausible. A
+legacy `model:fable` label on an old ticket is read as `model:opus`.
 
 ### Effort: two levels only
 
 | Effort | The agent runs at | For |
 |---|---|---|
 | `effort:medium` | effort `medium` | Most tickets |
-| `effort:high` | effort `high` | Correctness matters more than time: `sécurité` label, data migration, concurrency, a public API or contract, a ticket on the epic's critical path, a bug already missed once. The usual effort of a `model:fable` ticket (except a short decision ticket) |
+| `effort:high` | effort `high` | Correctness matters more than time: `sécurité` label, data migration, concurrency, a public API or contract, a ticket on the epic's critical path, a bug already missed once |
 
 The label is the exact effort passed to the agent, whatever the model: no
 other level is ever used. Raise the effort before the model: `opus` at
-`effort:high` is often enough where `fable` is tempting.
+`effort:high` covers the hard cases.
 
 ### Reviews: only where they can catch something
 
-Each review is an extra agent run at effort `high`. The rule is applied
+Both reviews are modes of ONE `reviewer` agent run at effort `high`, so a ticket that needs both pays for one context load and one run of the checks. The rule is applied
 twice: by `write-ticket` from what the ticket will change, and before the
 merge from the real diff (`git diff --name-only <base>...<head>`), which
 wins.
@@ -110,14 +108,14 @@ flowchart TD
   D{"Diff only docs, comments, tests,<br/>styles, wording or a rename?"}
   D -->|yes| N["no review<br/>(merge comment says why)"]
   D -->|no| S{"sécurité label or a<br/>sensitive area touched?"}
-  S -->|yes| SR["security-reviewer"]
+  S -->|yes| SR["reviewer: security mode"]
   S -->|no| NS["no security review"]
-  SR --> C{"challenger label?"}
+  SR --> C{"challenger label<br/>(on request)?"}
   NS --> C
-  C -->|yes| CH["challenger, same commit"]
+  C -->|yes| CH["add challenge mode<br/>to the same run"]
 ```
 
-**Security review** runs when the ticket carries `sécurité` or the diff
+**Security mode** runs when the ticket carries `sécurité` or the diff
 touches a sensitive area: auth, sessions, permissions; user data and its
 storage (models, migrations, SQL); a parser of untrusted input (routes,
 forms, uploads, webhooks); secrets, env and credential config; shell or
@@ -126,44 +124,55 @@ infra; hooks and scripts that run commands. A project lists its own
 sensitive paths in the « Revue » line of its `CLAUDE.md`; that list wins. In
 doubt, it runs.
 
-**Challenger** (`challenger` label): a delivery agent proves its own "done
-when" boxes; the `challenger` agent checks them again before the merge,
-without trusting the report: it re-proves each box, re-runs the `CLAUDE.md`
-checks, and verifies each test would fail without the change. Size and
-effort are not risk. Add the label only when a false "done" is plausible and
-costly:
+**Challenge mode** (`challenger` label): a delivery agent proves its own "done
+when" boxes; the challenge mode checks them again before the merge, without
+trusting the report: it re-proves each box, re-runs the `CLAUDE.md` checks
+once, and verifies each test would fail without the change. It is not the
+default of a sensitive ticket: a measured epic found real flaws (a deleted
+account keeping club rights, a forgeable consent marker, a purge undone by the
+next import) with the security mode, and mostly bookkeeping with the
+challenge. Size and effort are not risk. Add the label only to a ticket with
+NO security review, where a false "done" is plausible and costly:
 - a box proved by a judgment rather than a command result: a diagnosis, a
   bug "fixed" with no test that reproduces it, a performance claim;
-- `model:fable`, or `model:opus` on a ticket that changes code behaviour;
-- a code change on a `sécurité` ticket, a data migration, concurrency, a
-  public API or contract.
+- `model:opus` on a ticket that changes code behaviour;
+- a data migration with no security review, concurrency, a public API or
+  contract.
 
-Never on a `documentation` ticket, a change of docs, comments, tests only, a
-config value, a rename or wording, a `taille:S` ticket whose boxes are all
-commands, or a `manuel` ticket. A box that needs a human eye does not call
-for it: the challenger cannot tick it either. `run-epic` adds the label
-where the rule calls for it and never removes one; a docs-only diff skips
-it at merge time anyway, unless you asked for it. A `sécurité` ticket whose
-diff touches code is never skipped.
+A `sécurité` ticket gets the label only when you ask. Never on a
+`documentation` ticket, a change of docs, comments, tests only, a config value,
+a rename or wording, a `taille:S` ticket whose boxes are all commands, or a
+`manuel` ticket. A box that needs a human eye does not call for it: the
+challenge cannot tick it either. `run-epic` adds the label where the rule
+calls for it (never on a `sécurité` ticket on its own) and never removes one;
+a docs-only diff skips it at merge time anyway, unless you asked for it. A
+`sécurité` ticket whose diff touches code never skips the security mode.
 
 ### Who runs on what
 
 | Agent | Model | Effort | When |
 |---|---|---|---|
 | Delivery agent `t<N>` | the ticket's model label | the ticket's effort label | every ticket |
-| `security-reviewer` (`sec-<N>`) | Opus; Fable on a `sécurité` or `model:fable` ticket | `high` | before the merge, when the ticket carries `sécurité` or the diff touches a sensitive area |
-| `challenger` (`chal-<N>`) | Sonnet on a `model:sonnet` ticket, Opus on `model:opus` and `model:fable` | `high` | before the merge of a `challenger` ticket whose diff is not docs/tests only, in parallel with `security-reviewer` when it runs, on the same commit |
+| `reviewer` (`rev-<N>`) | Opus, never Fable; Sonnet only for a `model:sonnet` ticket reviewed in challenge mode alone | `high` | before the merge: security mode when the ticket carries `sécurité` or the diff touches a sensitive area, challenge mode on a `challenger` ticket whose diff is not docs/tests only, both in one run on the same commit |
 
-The challenger is never on Fable: it checks the work against the ticket's
-criteria, it does not redo the ticket's decisions. Its verdict:
-- **BLOCKING** (a box claimed but not proved, a red check, a test that does
-  not test, a change the ticket rules out): the merge waits; the agent fixes,
-  then both reviews run again on the new commit. Two BLOCKING rounds in a
-  row, from either review, park the ticket.
-- **OK WITH RESERVATIONS** (a forgotten doc or test, harmless scope creep):
-  no block; the reservations go in the ticket's merge comment and the closing
-  summary, and you decide whether they become tickets.
-- A box the challenger could not prove is never ticked.
+No agent is ever on Fable. The challenge mode checks the work against the
+ticket's criteria, it does not redo the ticket's decisions. Rounds are kept
+few, because each pass costs tokens and, in the measured epic, no re-pass
+found anything new:
+- Only a BLOCKING, or a security finding rated MEDIUM or higher inside the
+  diff, sends a ticket back to its agent. A LOW or a reservation never does:
+  it goes to the merge comment and the closing summary, and you decide
+  whether it becomes a ticket.
+- In the fix message the orchestrator asks, for each finding, the commit that
+  fixes it and the test or command that fails without it. With that proof for
+  every finding, a challenge BLOCKING needs no new review.
+- The reviewer runs again only after a MEDIUM-or-higher security fix, in
+  security mode alone and in delta mode (the commits since its head). Never
+  after a LOW, a reservation or an OK, never in challenge mode, and not for a
+  fix that only touches docs, comments or tests.
+- Two rounds at most: a second round that still needs a fix parks the ticket
+  and tells you.
+- A box the challenge could not prove is never ticked.
 
 ## Templates
 
@@ -185,7 +194,7 @@ the English meaning is given here.
 
 The "done when" list always includes the project's verify commands, the
 browser check for UI work, and "docs up to date (or: no doc concerned)".
-Security-sensitive tickets add "security-reviewer review with no HIGH/MEDIUM
+Security-sensitive tickets add "security review (`reviewer`) with no HIGH/MEDIUM
 finding". A box needing a human eye says so, so an unattended run does not
 wait on it.
 

@@ -46,7 +46,7 @@ It works in this order and asks before changing anything:
    it could not infer: create a repository? GitHub issues, a Projects board or
    Linear? how the board's columns map to the five workflow states? merge flow?
    maximum parallel agents?
-3. **Creates what you approved**: labels (`model:fable`, `model:opus`, `model:sonnet`,
+3. **Creates what you approved**: labels (`model:opus`, `model:sonnet`,
    `effort:medium`, `effort:high`, `challenger`, `epic`,
    `taille:S`, `taille:M`, `sécurité`; see [labels](../reference/tickets-and-labels.md#labels)), a board, a repository.
 4. **Writes the `## Workflow` section** of `CLAUDE.md`, or updates it if it
@@ -64,7 +64,7 @@ of working changes (a new board, a move to pull requests, a new test command).
 
 The skill reads the code involved, checks for duplicates, names the files
 likely touched, scores the ticket against the size gate, picks the model and effort labels
-(and `challenger` only when a false « done » would be plausible and costly;
+(and `challenger` only on a ticket with no security review where a false « done » would be plausible and costly;
 [how](../reference/tickets-and-labels.md#choosing-the-model-the-effort-and-the-challenger)),
 fills the template and creates the issue (and puts it on the board). If the
 ticket is too big it proposes an epic with smaller tickets and waves instead.
@@ -76,8 +76,8 @@ ticket is too big it proposes an epic with smaller tickets and waves instead.
 ```
 
 In this session: reads the ticket and its comments, opens a worktree, builds,
-verifies, updates the docs, runs `security-reviewer` when the diff is
-sensitive (and `challenger` on a `challenger` ticket), merges on your « go »,
+verifies, updates the docs, runs one `reviewer` agent when the diff is
+sensitive (security mode) or the ticket is labelled `challenger` (challenge mode), merges on your « go »,
 ticks the « done when » boxes and closes or moves the ticket. To run several
 tickets in the background, give the list to `run-epic`.
 

@@ -1,6 +1,6 @@
 ---
 name: write-ticket
-description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, `challenger` only when a false « done » would be plausible and costly, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
+description: Write a ticket or an epic in the ticket-flow house shape - template with "Fini quand", model/effort/size/type labels, `challenger` only on a ticket with no security review where a false « done » would be plausible and costly, and a size gate that splits any ticket too big for one agent into a sized epic with waves. Use whenever creating an issue, a Linear ticket, an epic or sub-issues ("crée un ticket", "ouvre une issue", "fais un épic", "découpe ça"), including tickets a delivery revealed.
 ---
 
 # write-ticket
@@ -61,29 +61,31 @@ ticket does not settle?":
   mechanical or well-located change; a11y/i18n/style fixes checked in the DOM.
 - Yes → `model:opus`: ambiguous architecture or product decision, an
   investigation, a scope the agent must decide itself.
-- Yes, and a wrong choice would be costly and hard to see in the "Fini quand"
-  checks → `model:fable` (Claude Fable 5.2, the most capable model, about
-  twice Opus's price: kept for these). Signs: security-sensitive design, an
-  intermittent or concurrency bug that resists diagnosis, a migration of real
-  data, a foundation many tickets of the epic build on, a ticket an opus agent
-  already failed.
+
+Only two models exist in this workflow, `model:sonnet` and `model:opus`: Fable
+is never used by the agents, whatever the ticket. A choice that is costly and
+hard to see in the "Fini quand" checks (security-sensitive design, an
+intermittent or concurrency bug, a migration of real data, a foundation many
+tickets build on) stays `model:opus`, with `effort:high` (a `sécurité` ticket gets the
+security review; the `challenger` label only if no security review applies).
 
 Effort, only two levels (no other value exists):
 - `effort:high`: correctness matters more than time: `sécurité` label, data
   migration, concurrency, a public API or contract, a ticket on the epic's
-  critical path, a bug already missed once. A `model:fable` ticket is
-  `effort:high` unless it is a short decision ticket.
+  critical path, a bug already missed once.
 - `effort:medium`: everything else, most tickets.
 
-Raise the effort before the model: an `opus` / `effort:high` ticket is often
-enough where `fable` is tempting.
+Raise the effort before the model: an `opus` / `effort:high` ticket covers
+the hard cases.
 
-Review gate (applies to both reviews, decided twice: when the ticket is
-written, from what it will change, and again before the merge, from the real
-diff `git diff --name-only <base>...<head>`). Each review costs an agent run
-at effort `high`: run it only where it can catch something.
+Review gate (decided twice: when the ticket is written, from what it will
+change, and again before the merge, from the real diff
+`git diff --name-only <base>...<head>`). A review costs an agent run at effort
+`high`: run it only where it can catch something. Both reviews are modes of
+ONE `reviewer` agent run, so a ticket that needs both pays for one context load
+and one run of the checks.
 
-Security review (`security-reviewer`) runs when either holds:
+Security mode (`reviewer`, mode `security`) runs when either holds:
 - the ticket carries `sécurité`;
 - the diff touches a sensitive area: auth, sessions, permissions; user data
   and its storage (models, migrations, SQL); a parser of untrusted input
@@ -98,21 +100,25 @@ as raw HTML, a rename or formatting with no logic change. A project's
 `CLAUDE.md` may list its own sensitive paths in its « Revue » line: that list
 wins. In doubt, run it.
 
-Challenger (`challenger` label): before the merge, the `challenger` agent
-re-proves the « Fini quand » itself instead of trusting the delivery report.
-Size and effort are not risk: add the label only when a false « done » is
-both plausible and costly, i.e. any of:
+Challenge mode (`challenger` label): before the merge, the reviewer re-proves
+the « Fini quand » itself instead of trusting the delivery report. It is NOT
+the default of a sensitive ticket: a security review already reads the diff
+with the same cost, and a measured epic found real flaws with the security
+mode and mostly bookkeeping with the challenge. Add the label only to a
+ticket with NO security review (not `sécurité`, no sensitive area) where a
+false « done » is both plausible and costly, i.e. any of:
 - a box proved by a judgment rather than a command result (a diagnosis, a
   bug « fixed » with no test that reproduces it, a performance claim);
-- `model:fable`, or `model:opus` on a ticket that changes code behaviour
+- `model:opus` on a ticket that changes code behaviour
   (the agent made choices the ticket did not settle);
-- a code change on a `sécurité` ticket, a data migration, concurrency, a
-  public API or contract.
+- a data migration with no security review, concurrency, a public API or
+  contract.
+A `sécurité` ticket gets the label only when the user asks for it.
 
 Never on: a `documentation` ticket; a ticket whose change is docs, comments,
 tests only, a config value, a rename or wording; a `taille:S` ticket whose
 boxes are all commands anyone can rerun; a `manuel` ticket. A box that needs
-a human eye does not call for it: the challenger cannot tick it either.
+a human eye does not call for it: the challenge cannot tick it either.
 
 Before the merge, a diff that holds only the skip list above (docs,
 comments, tests, styles, wording, rename) skips both reviews even on a
@@ -158,7 +164,7 @@ visual taste) says so, so `run-epic` knows not to wait on it at night.
 
 Security: if the ticket touches auth, another user's data, untrusted input,
 uploads, secrets or payments, add the `sécurité` label and a box
-"revue `security-reviewer` sans constat HIGH/MEDIUM".
+"revue de sécurité (`reviewer`) sans constat HIGH/MEDIUM".
 
 ## 5. Epic template
 
@@ -171,7 +177,7 @@ Créé par : @<login>, le <date>.
 | Vague | Tickets (modèle) | Attend | Pourquoi | Statut |
 |---|---|---|---|---|
 | 1 | #a (opus/high), #b (sonnet/medium) | rien | pourquoi ensemble | |
-| 2 | #c (fable/high) | #a | <raison> | |
+| 2 | #c (opus/high) | #a | <raison> | |
 
 Chemin critique : #a → #c.
 Règle : deux tickets qui touchent les mêmes fichiers ne sont jamais dans la même vague.
@@ -231,7 +237,7 @@ follow-up ticket: #N stays open in « à valider ».
 
 Title: « <titre de #N> : reste <quoi> ». Labels: model, effort and size of what is
 left (and `challenger` by the review gate of §3) (size gate as usual), same type as #N; a `sécurité` #N passes on its
-label and its `security-reviewer` box.
+label and its security review box.
 
 ```markdown
 ## Contexte

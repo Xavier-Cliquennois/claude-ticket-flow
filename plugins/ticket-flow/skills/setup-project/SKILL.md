@@ -117,12 +117,11 @@ skill owns; never recolor or rename the user's existing labels). Standard set:
 
 | Label | Color | Description |
 |---|---|---|
-| `model:fable` | `B8336A` | Choix à trancher où une erreur coûterait cher et se verrait mal : conception sécurité, bug de concurrence, migration de données, socle d'épic |
 | `model:opus` | `7B61FF` | Décision d'architecture/produit ambiguë, investigation, périmètre à trancher soi-même |
 | `model:sonnet` | `0E8A16` | Travail cadré : le ticket dit quoi faire et comment le vérifier |
 | `effort:medium` | `D4C5F9` | L'agent tourne en effort `medium` : la plupart des tickets |
 | `effort:high` | `5319E7` | L'agent tourne en effort `high` : la justesse compte plus que le temps : sécurité, données, concurrence, contrat public, chemin critique |
-| `challenger` | `FBCA04` | L'agent `challenger` revérifie le « Fini quand » avant la fusion, seulement quand un faux « fini » serait plausible et coûteux (jamais sur de la doc) |
+| `challenger` | `FBCA04` | Le mode `challenge` de l'agent `reviewer` revérifie le « Fini quand » avant la fusion, seulement sur un ticket sans revue de sécurité dont un faux « fini » serait plausible et coûteux (jamais sur de la doc) |
 | `epic` | `3E4B9E` | Parent d'une vague de sous-tickets |
 | `taille:S` | `C2E0C6` | Moins d'une demi-journée humaine, 1 à 3 fichiers |
 | `taille:M` | `FEF2C0` | Une journée humaine au plus, une seule responsabilité |
@@ -133,7 +132,7 @@ reuse GitHub's defaults when present. Keep project-specific taxonomies that
 already exist (e.g. `gain`/`validation` or `phase:N` labels) and document
 them; don't replace them.
 
-For Linear, create the equivalent labels in a "Modèle IA" group (Fable, Opus,
+For Linear, create the equivalent labels in a "Modèle IA" group (Opus,
 Sonnet), an "Effort" group (Medium, High) and a "Taille" group through the Linear MCP, only after a yes.
 
 For a GitHub Project board, install the card mover, after the same yes: copy
@@ -222,7 +221,7 @@ section is older. Upgrading a section brings it to that number.
 
 ```markdown
 ## Workflow
-<!-- ticket-flow workflow: 6 -->
+<!-- ticket-flow workflow: 7 -->
 
 ### Tickets
 - Suivi : <GitHub issues de owner/repo | Linear, équipe X, projet Y>.
@@ -232,7 +231,7 @@ section is older. Upgrading a section brings it to that number.
 - Déplacer une carte : `.claude/scripts/move-card --repo <owner>/<repo> --project <n> <N> "<option>"` (environ 2 points GraphQL quelle que soit la taille du tableau). Jamais `gh project item-list` pour retrouver une carte : il télécharge tout le tableau et épuise le quota partagé par les agents.
 - Quota : tout ce qui a un point d'accès REST passe par `gh api repos/<owner>/<repo>/...` (issues, commentaires, fermeture, labels, PR et fusion `pulls/N/merge`, sous-issues, `blocked_by`), jamais par `gh issue`/`gh pr`, qui consomment le quota GraphQL partagé. Seul `move-card` y touche. Sur une erreur de limite de débit : lire `gh api rate_limit`, attendre le reset, ne pas boucler.
 - Un ticket s'écrit avec le skill `write-ticket` : gabarit, labels, découpage.
-- Labels obligatoires : un type, `model:fable|opus|sonnet`, `effort:medium|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
+- Labels obligatoires : un type, `model:opus|sonnet`, `effort:medium|high` (rien d'autre), `taille:S|M` (L n'existe pas : on découpe). <labels propres au projet>
 - Un épic porte le label `epic`, ses enfants sont des sous-issues, et les blocages passent par des liens « bloqué par », pas par une section en prose.
 
 ### Environnement
@@ -245,12 +244,12 @@ section is older. Upgrading a section brings it to that number.
 - Worktree : `git worktree add ../<repo>-<N> -b <branche>`, branche `<convention>`.
 - Vérifier : `<commandes réelles, dans l'ordre>`.
 - Navigateur (si UI) : Chrome (`mcp__claude-in-chrome__*`) d'abord. Playwright (`mcp__plugin_playwright_playwright__*`) si Chrome est fermé ou échoue 2-3 fois. Sinon écrire « test navigateur NON FAIT » et pourquoi.
-- Revue : l'agent `security-reviewer` passe avant la fusion quand le ticket porte `sécurité` ou que le diff touche une zone sensible (<zones du projet, ex. auth, données utilisateur, entrées non fiables, secrets, SQL, shell, rendu HTML, dépendances, CI et déploiement>). Un diff de doc, de commentaires, de tests ou de style seul ne passe par aucune revue. Un constat HIGH/MEDIUM bloque la fusion, un constat hors périmètre devient un ticket `sécurité`. Un ticket `challenger` passe aussi par l'agent `challenger` (en parallèle, même commit) : un BLOQUANT bloque la fusion.
+- Revue : l'agent `reviewer` (un seul passage, mode `security`) passe avant la fusion quand le ticket porte `sécurité` ou que le diff touche une zone sensible (<zones du projet, ex. auth, données utilisateur, entrées non fiables, secrets, SQL, shell, rendu HTML, dépendances, CI et déploiement>). Un diff de doc, de commentaires, de tests ou de style seul ne passe par aucune revue. Un constat HIGH/MEDIUM bloque la fusion, un constat hors périmètre devient un ticket `sécurité`, un LOW ou une réserve ne se corrige pas avant la fusion (commentaire sur le ticket). Un ticket `challenger` ajoute le mode `challenge` au même passage : un BLOQUANT bloque la fusion. Une re-revue n'a lieu qu'après un constat de sécurité MEDIUM ou plus corrigé, et deux tours au plus.
 - Fusion : <PR vers X, merge commit | merge local --no-ff>. <règles de branche protégée>
 - Clôture : cocher les cases « Fini quand » au fil de l'eau, commenter ce qui a été vérifié, fermer soi-même quand tout est coché (`Closes #N` ne ferme rien si la fusion ne vise pas la branche par défaut). S'il ne reste qu'une vérification à la main : « à valider ». S'il reste du code : ticket de suite, jamais un ticket laissé ouvert. Ouvrir les tickets révélés.
 
 ### Petits changements
-- Un changement demandé par l'utilisateur, d'une ou deux lignes (une valeur, un réglage, une faute, une phrase de doc), sans comportement nouveau ni zone sensible (auth, données utilisateur, secrets, SQL, shell, rendu HTML), ne passe pas par un ticket. La session le fait elle-même, orchestrateur compris : branche courte, commandes de vérification, commit dont le message dit pourquoi, fusion selon le flux ci-dessus. Pas de `security-reviewer` hors zone sensible.
+- Un changement demandé par l'utilisateur, d'une ou deux lignes (une valeur, un réglage, une faute, une phrase de doc), sans comportement nouveau ni zone sensible (auth, données utilisateur, secrets, SQL, shell, rendu HTML), ne passe pas par un ticket. La session le fait elle-même, orchestrateur compris : branche courte, commandes de vérification, commit dont le message dit pourquoi, fusion selon le flux ci-dessus. Pas de revue de sécurité hors zone sensible.
 - Plus large (plusieurs fichiers, un comportement qui change, un doute sur l'effet) → ticket, comme d'habitude.
 
 ### Épics
@@ -271,4 +270,4 @@ user's yes like everything else.
 
 List what was created, what changed in CLAUDE.md, and what is left to
 the user (commit, push, a decision they deferred). If `write-ticket`, `run-epic` or
-the `security-reviewer` or `challenger` agents are missing, say so (they ship together in the `ticket-flow` plugin).
+the `reviewer` agent is missing, say so (they ship together in the `ticket-flow` plugin).
